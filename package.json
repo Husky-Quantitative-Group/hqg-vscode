@@ -1,8 +1,8 @@
 {
   "name": "hqg-backtester",
   "displayName": "HQG Backtester",
-  "description": "Run HQG backtests from VS Code and see the results beside your strategy.",
-  "version": "0.1.2",
+  "description": "Run HQG backtests from your editor and see the results beside your strategy.",
+  "version": "0.1.3",
   "publisher": "hqg",
   "license": "MIT",
   "icon": "media/icon.png",

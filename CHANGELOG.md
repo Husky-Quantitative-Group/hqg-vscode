@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.3
+
+- Fixed the README's logo and tab icon showing as broken images on dark pages, including Open VSX
+  and VS Code's extension page in a dark theme.
+- The README has separate install steps for VS Code (the Marketplace) and for Cursor, Windsurf and
+  VSCodium (Open VSX).
+
 ## 0.1.2
 
 - Now installable from [Open VSX](https://open-vsx.org/extension/hqg/hqg-backtester) in Cursor,

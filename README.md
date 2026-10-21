@@ -5,19 +5,19 @@
   </picture>
 </p>
 
-<h1 align="center">HQG Backtester for VS Code</h1>
+<h1 align="center">HQG Backtester</h1>
 
 <p align="center">
-  Run a strategy on the HQG backtester without leaving the editor, and see the results in a tab beside your code.
+  Run a strategy on the HQG backtester without leaving your editor, and see the results in a tab beside your code.<br>
+  For VS Code and VS Code-based editors: Cursor, Windsurf and VSCodium.
 </p>
 
 This extension does what the HQG command line tool (`hqg`, from [hqg-backtester](https://github.com/Husky-Quantitative-Group/hqg-backtester)) does: it sends your
 strategy to the HQG backtester and waits for the result. You pick the dates and starting equity in
-a side panel, press **Run Backtest**, and get the dashboard's results view inside VS Code.
+a side panel, press **Run Backtest**, and get the dashboard's results view inside your editor.
 
-Install it from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=hqg.hqg-backtester), or from [Open VSX](https://open-vsx.org/extension/hqg/hqg-backtester) for Cursor, Windsurf and VSCodium, in under a minute. You don't need to read
-or build any code. If you want to work on the extension itself, see
-[Develop the extension](#develop-the-extension).
+Install it in under a minute, without reading or building any code. If you want to work on the
+extension itself, see [Develop the extension](#develop-the-extension).
 
 - [Install](#install)
 - [Sign in](#sign-in)
@@ -32,27 +32,42 @@ or build any code. If you want to work on the extension itself, see
 
 ### What you need
 
-- **VS Code 1.90 or newer.** Check with **Code → About Visual Studio Code**, or get it from
-  [code.visualstudio.com](https://code.visualstudio.com).
+- **VS Code 1.90 or newer**, or a recent **Cursor**, **Windsurf** or **VSCodium**.
 - **An HQG dashboard account** with backtester access. You can sign in at
   [dashboard.uconnquant.com](https://dashboard.uconnquant.com); if you can't, ask an HQG admin.
 
 ### Step 1: Install the extension
 
-1. In VS Code, open the Extensions view: `⇧⌘X` on Mac, `Ctrl+Shift+X` on Windows.
-2. Search for **HQG Backtester**. Check that the publisher is **HQG**.
+The extension is the same everywhere, but VS Code and the other editors get extensions from
+different stores. Follow the steps for your editor.
+
+#### VS Code, from the VS Code Marketplace
+
+1. Open the Extensions view: `⇧⌘X` on Mac, `Ctrl+Shift+X` on Windows.
+2. Search for **HQG Backtester**, and check that the publisher is **Husky Quantitative Group**.
 3. Click **Install**.
 
-You can also click **Install** on its [Marketplace page](https://marketplace.visualstudio.com/items?itemName=hqg.hqg-backtester), or run this in a terminal:
+Or click **Install** on its [Marketplace page](https://marketplace.visualstudio.com/items?itemName=hqg.hqg-backtester), or run this in a terminal:
 
 ```bash
 code --install-extension hqg.hqg-backtester
 ```
 
-**Using Cursor, Windsurf or VSCodium?** These editors install extensions from
-[Open VSX](https://open-vsx.org/extension/hqg/hqg-backtester) instead of the VS Code Marketplace.
-Open the editor's Extensions view, search for **HQG Backtester** by **hqg**, and click **Install**.
-In VSCodium you can also run `codium --install-extension hqg.hqg-backtester`.
+#### Cursor, Windsurf or VSCodium, from Open VSX
+
+These editors can't use the VS Code Marketplace. They install from [Open VSX](https://open-vsx.org/extension/hqg/hqg-backtester) instead.
+
+1. Open the editor's Extensions view: `⇧⌘X` on Mac, `Ctrl+Shift+X` on Windows.
+2. Search for **HQG Backtester**, and check that it's by **hqg**.
+3. Click **Install**.
+
+In VSCodium you can also run this in a terminal:
+
+```bash
+codium --install-extension hqg.hqg-backtester
+```
+
+The rest of this guide works the same in every editor. The screenshots show VS Code.
 
 ### Step 2: Find the extension's icons
 
