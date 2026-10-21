@@ -1,5 +1,5 @@
 {
-  "name": "hqg-vscode",
+  "name": "hqg-backtester",
   "displayName": "HQG Backtester",
   "description": "Run HQG backtests from VS Code and see the results beside your strategy.",
   "version": "0.1.0",

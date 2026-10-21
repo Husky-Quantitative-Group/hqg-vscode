@@ -15,7 +15,7 @@ This extension does what the HQG command line tool (`hqg`, from [hqg-backtester]
 strategy to the HQG backtester and waits for the result. You pick the dates and starting equity in
 a side panel, press **Run Backtest**, and get the dashboard's results view inside VS Code.
 
-Install it from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=hqg.hqg-vscode) in under a minute. You don't need to read
+Install it from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=hqg.hqg-backtester) in under a minute. You don't need to read
 or build any code. If you want to work on the extension itself, see
 [Develop the extension](#develop-the-extension).
 
@@ -43,10 +43,10 @@ or build any code. If you want to work on the extension itself, see
 2. Search for **HQG Backtester**. Check that the publisher is **HQG**.
 3. Click **Install**.
 
-You can also click **Install** on its [Marketplace page](https://marketplace.visualstudio.com/items?itemName=hqg.hqg-vscode), or run this in a terminal:
+You can also click **Install** on its [Marketplace page](https://marketplace.visualstudio.com/items?itemName=hqg.hqg-backtester), or run this in a terminal:
 
 ```bash
-code --install-extension hqg.hqg-vscode
+code --install-extension hqg.hqg-backtester
 ```
 
 Using Cursor, Windsurf or VSCodium? They don't use the VS Code Marketplace yet, so build the
@@ -247,8 +247,8 @@ work, so the two copies don't both show up.
 To use your build in your normal VS Code, or in Cursor, Windsurf or VSCodium:
 
 ```bash
-npm run package                                  # builds hqg-vscode-0.1.0.vsix
-code --install-extension hqg-vscode-0.1.0.vsix
+npm run package                                  # builds hqg-backtester-0.1.0.vsix
+code --install-extension hqg-backtester-0.1.0.vsix
 ```
 
 Then run **Developer: Reload Window**.
