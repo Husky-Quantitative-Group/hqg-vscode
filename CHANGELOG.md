@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.2
+
+- Now installable from [Open VSX](https://open-vsx.org/extension/hqg/hqg-backtester) in Cursor,
+  Windsurf and VSCodium, after Open VSX verified the `hqg` namespace.
+- Releases are published by a GitHub Action: publishing a GitHub release puts it on Open VSX and
+  attaches the `.vsix`.
+
 ## 0.1.1
 
 - Also published on [Open VSX](https://open-vsx.org/extension/hqg/hqg-backtester), so Cursor,

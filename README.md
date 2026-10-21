@@ -49,13 +49,10 @@ You can also click **Install** on its [Marketplace page](https://marketplace.vis
 code --install-extension hqg.hqg-backtester
 ```
 
-**Using Cursor, Windsurf or VSCodium?** These editors install extensions from Open VSX instead
-of the VS Code Marketplace. The HQG Backtester listing there is waiting for Open VSX to confirm the
-`hqg` name ([open-vsx.org#14511](https://github.com/EclipseFdn/open-vsx.org/issues/14511)). Until
-then, download `hqg-backtester-0.1.1.vsix` from the
-[latest release](https://github.com/Husky-Quantitative-Group/hqg-vscode/releases/latest), open the
-Extensions view, click **⋯** → **Install from VSIX…**, and pick the file. Once the listing is
-approved, the extension updates from Open VSX like any other.
+**Using Cursor, Windsurf or VSCodium?** These editors install extensions from
+[Open VSX](https://open-vsx.org/extension/hqg/hqg-backtester) instead of the VS Code Marketplace.
+Open the editor's Extensions view, search for **HQG Backtester** by **hqg**, and click **Install**.
+In VSCodium you can also run `codium --install-extension hqg.hqg-backtester`.
 
 ### Step 2: Find the extension's icons
 
