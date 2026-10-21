@@ -131,5 +131,6 @@
     refresh();
   });
 
-  vscode.postMessage({ type: "ready" });
+  // The width lets the extension widen a too-narrow sidebar once (see widenIfNarrow).
+  vscode.postMessage({ type: "ready", width: document.documentElement.clientWidth });
 })();

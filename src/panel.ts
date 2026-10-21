@@ -45,6 +45,9 @@ type Handlers = {
 };
 
 const DASHBOARD_URL = "https://dashboard.uconnquant.com";
+// Wide enough for the "No strategy open" sentence to fit on one line.
+const MIN_PANEL_WIDTH = 440;
+const WIDENED_KEY = "hqg.sidebarWidened";
 
 export class RunPanel implements vscode.WebviewViewProvider {
   static readonly viewId = "hqg.runPanel";
@@ -105,9 +108,9 @@ export class RunPanel implements vscode.WebviewViewProvider {
   </section>
 
   <section id="signed-in" hidden>
-    <div id="no-strategy" class="callout" hidden>
+    <div id="no-strategy" class="callout" hidden title="The line has to be within the file's first 10 lines.">
       <p class="callout-title">No strategy open</p>
-      <p>Open a Python file with <code># hqg-backtest: &lt;name&gt;</code> in its first 10 lines.</p>
+      <p>Open a Python file with <code># hqg-backtest: &lt;name&gt;</code> at the top.</p>
     </div>
     <div id="strategy-block" class="strategy" hidden>
       <span class="label">Strategy</span>
@@ -148,6 +151,7 @@ export class RunPanel implements vscode.WebviewViewProvider {
           webview.postMessage({ type: "init", options: loadOptions(this.context) });
           this.sync();
           this.deliverSignIn();
+          await this.widenIfNarrow(message.width);
           break;
         case "update":
           await this.context.globalState.update(OPTIONS_KEY, message.options);
@@ -173,6 +177,21 @@ export class RunPanel implements vscode.WebviewViewProvider {
           break;
       }
     });
+  }
+
+  /**
+   * Widen the sidebar once if it's narrower than the panel's content needs. VS Code has no way to
+   * set a sidebar's width, but "increase view width" widens the focused view in 60px steps. It
+   * only happens the first time, so a sidebar the user narrows later is left alone.
+   */
+  private async widenIfNarrow(width: number): Promise<void> {
+    if (!(width > 0) || width >= MIN_PANEL_WIDTH || this.context.globalState.get(WIDENED_KEY)) return;
+    await this.context.globalState.update(WIDENED_KEY, true);
+    if (!this.view?.visible) return;
+    await vscode.commands.executeCommand(`${RunPanel.viewId}.focus`);
+    for (let step = 0; step < Math.ceil((MIN_PANEL_WIDTH - width) / 60); step++) {
+      await vscode.commands.executeCommand("workbench.action.increaseViewWidth");
+    }
   }
 
   setAuth(auth: PanelAuth): void {
