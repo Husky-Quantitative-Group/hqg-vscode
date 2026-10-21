@@ -1,0 +1,105 @@
+{
+  "name": "hqg-vscode",
+  "displayName": "HQG Backtester",
+  "description": "Run HQG backtests from VS Code and see the results beside your strategy.",
+  "version": "0.0.1",
+  "publisher": "hqg-local",
+  "private": true,
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:python"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "hqg.runBacktest",
+        "title": "Run Backtest",
+        "category": "HQG",
+        "icon": {
+          "light": "media/chart-light.svg",
+          "dark": "media/chart-dark.svg"
+        }
+      },
+      {
+        "command": "hqg.signIn",
+        "title": "Sign In",
+        "category": "HQG"
+      },
+      {
+        "command": "hqg.signOut",
+        "title": "Sign Out",
+        "category": "HQG"
+      },
+      {
+        "command": "hqg.health",
+        "title": "Check Service Health",
+        "category": "HQG"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "hqg",
+          "title": "HQG Backtester",
+          "icon": "media/hqg.svg"
+        }
+      ]
+    },
+    "views": {
+      "hqg": [
+        {
+          "type": "webview",
+          "id": "hqg.runPanel",
+          "name": "HQG Backtester"
+        }
+      ]
+    },
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "hqg.runBacktest",
+          "when": "hqg.isStrategy"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "hqg.runBacktest",
+          "when": "hqg.isStrategy",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "HQG Backtester",
+      "properties": {
+        "hqg.apiUrl": {
+          "type": "string",
+          "default": "https://platform.uconnquant.com/backtester",
+          "description": "Base URL of the HQG backtesting service."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package --allow-missing-repository --skip-license --no-rewrite-relative-links",
+    "vscode:prepublish": "npm run compile"
+  },
+  "dependencies": {
+    "lightweight-charts": "^5.0.9"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.2.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,534 @@
+/* Colors and fonts come from the active VS Code theme; the layout follows the dashboard's backtest page. */
+:root {
+  --border: var(--vscode-panel-border, rgba(128, 128, 128, 0.25));
+  --muted: var(--vscode-descriptionForeground);
+  --pos: var(--vscode-charts-green, #34d399);
+  --neg: var(--vscode-charts-red, #fb7185);
+  --surface: var(--vscode-sideBar-background, transparent);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--vscode-editor-background);
+  color: var(--vscode-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  margin: 0;
+  padding: 16px 20px 32px;
+  min-width: 320px;
+}
+
+h1 {
+  font-size: 1.35em;
+  font-weight: 600;
+  margin: 0 0 2px;
+}
+
+#subtitle {
+  color: var(--muted);
+  margin: 0 0 16px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-width: 0;
+}
+
+.card-title {
+  font-size: 0.8em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.group[hidden] {
+  display: none;
+}
+
+/* ── stat cards ─────────────────────────────── */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.stat {
+  padding: 10px 14px;
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 0.75em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 1.15em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.pos {
+  color: var(--pos);
+}
+
+.neg {
+  color: var(--neg);
+}
+
+/* ── metrics + equity ───────────────────────── */
+.main {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: start;
+}
+
+/* Narrow tabs stack the metrics under the chart instead of squeezing it. */
+@media (max-width: 760px) {
+  .main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .metrics {
+    order: 2;
+  }
+}
+
+.metrics .card-title {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.metrics dl {
+  margin: 0;
+  padding: 4px 14px 10px;
+}
+
+.metric {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.metric:last-child {
+  border-bottom: none;
+}
+
+.metric dt {
+  color: var(--muted);
+}
+
+.metric dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.segmented {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.segmented button,
+button.ghost {
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  padding: 3px 10px;
+  font: inherit;
+  font-size: 0.85em;
+  cursor: pointer;
+}
+
+.segmented button + button {
+  border-left: 1px solid var(--border);
+}
+
+.segmented button:hover,
+button.ghost:hover:not(:disabled) {
+  color: var(--vscode-foreground);
+}
+
+.segmented button.active {
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.segmented button[hidden] {
+  display: none;
+}
+
+.chart-frame {
+  position: relative;
+  margin: 8px 0 0 10px;
+}
+
+#chart {
+  position: relative;
+  z-index: 1;
+  height: 380px;
+}
+
+/* Drawn under the chart (its background is transparent): candles and the library's
+   last-price and crosshair tags stay on top of these labels and grid lines. */
+.price-grid,
+.price-labels {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.grid-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(128, 128, 128, 0.1);
+}
+
+.price-labels {
+  right: 0;
+}
+
+.price-label {
+  position: absolute;
+  left: 9px;
+  transform: translateY(-50%);
+  font-family: -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--vscode-descriptionForeground, #9aa0a6);
+  white-space: nowrap;
+}
+
+/* Inner scrollbars: thin overlays at the bottom and right of the plot, clearer on hover. */
+.scrollbar {
+  position: absolute;
+  z-index: 6;
+  top: 0;
+  left: 0;
+  border-radius: 5px;
+  opacity: 0.55;
+  transition: opacity 0.15s, background-color 0.15s;
+}
+
+.scrollbar.horizontal {
+  height: 10px;
+}
+
+.scrollbar.vertical {
+  width: 10px;
+}
+
+.scrollbar:hover,
+.scrollbar.dragging {
+  opacity: 1;
+  background: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.2));
+}
+
+/* Nothing to scroll (e.g. "All"): hide the bar until you zoom in. */
+.scrollbar.full {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.scrollbar .thumb {
+  position: absolute;
+  border-radius: 5px;
+  background: var(--vscode-scrollbarSlider-hoverBackground, rgba(100, 100, 100, 0.7));
+  cursor: grab;
+}
+
+.scrollbar.dragging .thumb {
+  background: var(--vscode-scrollbarSlider-activeBackground, rgba(191, 191, 191, 0.4));
+  cursor: grabbing;
+}
+
+.scrollbar.horizontal .thumb {
+  top: 2px;
+  bottom: 2px;
+}
+
+.scrollbar.vertical .thumb {
+  left: 2px;
+  right: 2px;
+}
+
+.tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+  min-width: 180px;
+  padding: 8px 10px;
+  pointer-events: none;
+  background: var(--vscode-editorHoverWidget-background, var(--vscode-editor-background));
+  border: 1px solid var(--vscode-editorHoverWidget-border, var(--border));
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  font-variant-numeric: tabular-nums;
+}
+
+.tooltip-date {
+  font-size: 0.8em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  line-height: 1.6;
+}
+
+.tooltip-row span:first-child {
+  color: var(--muted);
+}
+
+.tooltip-split {
+  border-top: 1px solid var(--border);
+  margin: 6px 0;
+}
+
+.tooltip-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.allocation {
+  display: flex;
+  height: 130px;
+  margin: 8px 0 0 10px;
+}
+
+.allocation-plot {
+  position: relative;
+  flex: none;
+  height: 100%;
+}
+
+#allocation {
+  height: 100%;
+  display: block;
+  cursor: crosshair;
+}
+
+.guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  background: var(--vscode-foreground);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+/* The allocation tooltip opens upward, over the equity chart, so long holding lists fit. */
+.tooltip.above {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+
+.allocation-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0 0 18px 8px;
+  font-size: 0.8em;
+  color: var(--muted);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  padding: 10px 14px 12px;
+  font-size: 0.85em;
+}
+
+.legend-title {
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* ── execution log ──────────────────────────── */
+.badge {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.8em;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+}
+
+.badge[hidden] {
+  display: none;
+}
+
+select,
+.pager input {
+  font: inherit;
+  font-size: 0.9em;
+  color: var(--vscode-dropdown-foreground, var(--vscode-foreground));
+  background: var(--vscode-dropdown-background, transparent);
+  border: 1px solid var(--vscode-dropdown-border, var(--border));
+  border-radius: 3px;
+  padding: 2px 6px;
+}
+
+.pager input {
+  width: 4.5em;
+  text-align: center;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+th {
+  font-size: 0.75em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: left;
+  white-space: nowrap;
+}
+
+th,
+td {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+td {
+  white-space: nowrap;
+}
+
+.num {
+  text-align: right;
+}
+
+.ticker {
+  font-weight: 600;
+}
+
+.pill {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: color-mix(in srgb, currentColor 15%, transparent);
+}
+
+.empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 20px;
+}
+
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  color: var(--muted);
+}
+
+.pager label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+button.ghost {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+button.ghost:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.text-block {
+  margin: 0;
+  padding: 12px 14px;
+  max-height: 420px;
+  overflow: auto;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: var(--vscode-editor-font-size, 12px);
+  white-space: pre-wrap;
+}
+
+[hidden] {
+  display: none !important;
+}
