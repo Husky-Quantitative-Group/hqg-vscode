@@ -11,7 +11,7 @@
   Run a strategy on the HQG backtester without leaving the editor, and see the results in a tab beside your code.
 </p>
 
-This extension does what the `hqg` command line tool from `hqg-backtester` does: it sends your
+This extension does what the HQG command line tool (`hqg`, from [hqg-backtester](https://github.com/Husky-Quantitative-Group/hqg-backtester)) does: it sends your
 strategy to the HQG backtester and waits for the result. You pick the dates and starting equity in
 a side panel, press **Run Backtest**, and get the dashboard's results view inside VS Code.
 
@@ -126,10 +126,10 @@ or expired.
 
 - **Tokens last 24 hours.** The bottom of the panel shows how long you have left. When the token
   expires, the panel asks you to sign in again.
-- **Already use the `hqg` command line tool?** If you've run `hqg login`, you're already signed in.
+- **Already use the [HQG command line tool](https://github.com/Husky-Quantitative-Group/hqg-backtester#hqg-cli)?** If you've run `hqg login`, you're already signed in.
   The extension reads the same token from `~/.hqg/credentials`.
 - **Sign Out** at the bottom of the panel signs you out of the extension only. Your
-  `~/.hqg/credentials` file is left alone, so the command line tool stays signed in.
+  `~/.hqg/credentials` file is left alone, so the HQG command line tool stays signed in.
 
 ## Mark your strategy file
 
@@ -263,6 +263,6 @@ opens with your development copy of the extension loaded. After changing code, r
 | `src/extension.ts` | Commands, the run flow, sign-in, and which file counts as the strategy |
 | `src/panel.ts`, `media/panel.*` | The side panel |
 | `src/results.ts`, `media/results.*` | The results tab |
-| `src/api.ts` | The backtester API client, the same calls as `hqg-backtester/cli/api.py` |
+| `src/api.ts` | The backtester API client, the same calls as [`cli/api.py`](https://github.com/Husky-Quantitative-Group/hqg-backtester/blob/main/cli/api.py) in hqg-backtester |
 | `src/auth.ts` | Token storage, and reading `~/.hqg/credentials` |
 | `docs/images/` | The screenshots in this README |
