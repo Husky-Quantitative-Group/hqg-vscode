@@ -2,14 +2,37 @@
   "name": "hqg-vscode",
   "displayName": "HQG Backtester",
   "description": "Run HQG backtests from VS Code and see the results beside your strategy.",
-  "version": "0.0.1",
-  "publisher": "hqg-local",
-  "private": true,
-  "license": "UNLICENSED",
+  "version": "0.1.0",
+  "publisher": "hqg",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#0b1220",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Husky-Quantitative-Group/hqg-vscode.git"
+  },
+  "homepage": "https://github.com/Husky-Quantitative-Group/hqg-vscode#readme",
+  "bugs": {
+    "url": "https://github.com/Husky-Quantitative-Group/hqg-vscode/issues"
+  },
+  "keywords": [
+    "backtesting",
+    "backtest",
+    "quant",
+    "trading",
+    "strategy",
+    "HQG",
+    "UConn"
+  ],
   "engines": {
     "vscode": "^1.90.0"
   },
   "categories": [
+    "Data Science",
+    "Visualization",
     "Other"
   ],
   "main": "./out/extension.js",
@@ -90,8 +113,9 @@
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "package": "vsce package --allow-missing-repository --skip-license --no-rewrite-relative-links",
-    "vscode:prepublish": "npm run compile"
+    "package": "vsce package",
+    "vscode:prepublish": "npm run compile",
+    "publish": "vsce publish --azure-credential"
   },
   "dependencies": {
     "lightweight-charts": "^5.0.9"

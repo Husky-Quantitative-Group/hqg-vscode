@@ -3,3 +3,4 @@ src/**
 out/**/*.map
 tsconfig.json
 *.vsix
+docs/**

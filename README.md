@@ -15,15 +15,16 @@ This extension does what the HQG command line tool (`hqg`, from [hqg-backtester]
 strategy to the HQG backtester and waits for the result. You pick the dates and starting equity in
 a side panel, press **Run Backtest**, and get the dashboard's results view inside VS Code.
 
-You build and install it on your own computer. It is not on the VS Code Marketplace. The steps
-below take about five minutes, and you don't need to read any code.
+Install it from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=hqg.hqg-vscode) in under a minute. You don't need to read
+or build any code. If you want to work on the extension itself, see
+[Develop the extension](#develop-the-extension).
 
 - [Install](#install)
 - [Sign in](#sign-in)
 - [Mark your strategy file](#mark-your-strategy-file)
 - [Run a backtest](#run-a-backtest)
 - [Read the results](#read-the-results)
-- [Update to a newer version](#update-to-a-newer-version)
+- [Updates](#updates)
 - [Troubleshooting](#troubleshooting)
 - [Develop the extension](#develop-the-extension)
 
@@ -31,69 +32,27 @@ below take about five minutes, and you don't need to read any code.
 
 ### What you need
 
-| | How to check | Where to get it |
-| --- | --- | --- |
-| **VS Code 1.90 or newer** | **Code → About Visual Studio Code** | [code.visualstudio.com](https://code.visualstudio.com) |
-| **Git** | `git --version` in a terminal | [git-scm.com](https://git-scm.com/downloads) |
-| **Node.js 18 or newer**, which includes `npm` | `node --version` | [nodejs.org](https://nodejs.org), the LTS version |
-| **An HQG dashboard account** with backtester access | You can sign in at [dashboard.uconnquant.com](https://dashboard.uconnquant.com) | Ask an HQG admin |
+- **VS Code 1.90 or newer.** Check with **Code → About Visual Studio Code**, or get it from
+  [code.visualstudio.com](https://code.visualstudio.com).
+- **An HQG dashboard account** with backtester access. You can sign in at
+  [dashboard.uconnquant.com](https://dashboard.uconnquant.com); if you can't, ask an HQG admin.
 
-On Mac, keep VS Code in your **Applications** folder. If it runs from Downloads, the `code`
-command used in step 4 can't be set up.
+### Step 1: Install the extension
 
-### Step 1: Get the code
+1. In VS Code, open the Extensions view: `⇧⌘X` on Mac, `Ctrl+Shift+X` on Windows.
+2. Search for **HQG Backtester**. Check that the publisher is **HQG**.
+3. Click **Install**.
 
-Open a terminal and run:
-
-```bash
-git clone https://github.com/Husky-Quantitative-Group/hqg-vscode.git
-cd hqg-vscode
-```
-
-### Step 2: Install the build tools
+You can also click **Install** on its [Marketplace page](https://marketplace.visualstudio.com/items?itemName=hqg.hqg-vscode), or run this in a terminal:
 
 ```bash
-npm install
+code --install-extension hqg.hqg-vscode
 ```
 
-This downloads what the extension needs into a `node_modules` folder. It takes a minute and only
-has to be done once.
+Using Cursor, Windsurf or VSCodium? They don't use the VS Code Marketplace yet, so build the
+extension yourself: see [Develop the extension](#develop-the-extension).
 
-### Step 3: Build the extension
-
-```bash
-npm run package
-```
-
-This creates a file called `hqg-vscode-0.0.1.vsix` in the `hqg-vscode` folder. That file is the
-extension.
-
-### Step 4: Install it in VS Code
-
-```bash
-code --install-extension hqg-vscode-0.0.1.vsix
-```
-
-You should see `Extension 'hqg-vscode-0.0.1.vsix' was successfully installed.`
-
-<details>
-<summary><b>If it says <code>code: command not found</code></b></summary>
-
-1. Open VS Code.
-2. Press `⇧⌘P` (`Ctrl+Shift+P` on Windows) to open the Command Palette.
-3. Type **Shell Command: Install 'code' command in PATH** and press Enter.
-4. Close your terminal, open a new one, `cd` back into `hqg-vscode`, and run step 4 again.
-
-If you'd rather not use the terminal: in VS Code, open the Extensions view (`⇧⌘X`), click the
-**⋯** menu at the top of the view, choose **Install from VSIX…**, and pick
-`hqg-vscode-0.0.1.vsix`.
-</details>
-
-### Step 5: Reload VS Code
-
-Press `⇧⌘P` (`Ctrl+Shift+P` on Windows), type **Developer: Reload Window**, and press Enter.
-
-### Step 6: Find the extension's icons
+### Step 2: Find the extension's icons
 
 Open any Python file that has the `# hqg-backtest` line (see
 [Mark your strategy file](#mark-your-strategy-file)). The extension adds two chart icons:
@@ -152,7 +111,7 @@ Python files.
 
 1. Open your strategy file, so it's the current tab.
 2. Open the panel: click the line-chart icon in the Activity Bar, or the chart icon above the
-   file (see [step 6](#step-6-find-the-extensions-icons)). The panel shows your strategy's name
+   file (see [step 6](#step-2-find-the-extensions-icons)). The panel shows your strategy's name
    and the run settings:
 
    ![Ready to run: the panel shows the strategy name, dates, starting equity and an enabled Run Backtest button](docs/images/vscode-ready.png)
@@ -190,7 +149,7 @@ Activity Bar into the Secondary Side Bar. VS Code remembers where you put it.
 ## Read the results
 
 When the backtest finishes, the results open in a tab beside your code. The tab has the HQG
-candlestick icon <picture><source media="(prefers-color-scheme: dark)" srcset="media/candles-dark.svg"><img src="media/candles-light.svg" alt="" height="14"></picture>.
+candlestick icon <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/candles-dark.png"><img src="docs/images/candles-light.png" alt="" height="14"></picture>.
 Each run opens its own tab, so you can compare runs side by side.
 
 ![The results tab: headline numbers, strategy metrics, the equity chart, the allocation chart and the execution log](docs/images/results.png)
@@ -221,28 +180,22 @@ in your file, that line gets a red squiggle, which goes away once you edit the f
 from each run, including `self.log()` output, is also written to the **HQG Backtest** channel in
 VS Code's Output panel (**View → Output**).
 
-## Update to a newer version
+## Updates
 
-From the `hqg-vscode` folder:
+VS Code updates the extension by itself when a new version comes out. To check which version you
+have, open the Extensions view and click **HQG Backtester**. Its changes are listed in the
+[changelog](CHANGELOG.md).
 
-```bash
-git pull
-npm install
-npm run package
-code --install-extension hqg-vscode-0.0.1.vsix --force
-```
-
-Then run **Developer: Reload Window**. Results tabs that were already open keep the old version
-until you run the backtest again.
+After an update, results tabs that were already open keep the old version until you run the
+backtest again.
 
 ## Troubleshooting
 
 | What you see | What to do |
 | --- | --- |
-| No line-chart icon in the Activity Bar | Run **Developer: Reload Window**. If it's still missing, run step 4 again and check it says `successfully installed`. |
+| No line-chart icon in the Activity Bar | In the Extensions view, check that **HQG Backtester** is installed and enabled, then run **Developer: Reload Window** (`⇧⌘P`). |
 | **Run Backtest** is greyed out | Make your strategy file the current tab, and check that `# hqg-backtest: <strategy-name>` is within its first 10 lines. |
 | The chart icon above the file doesn't show | Same as above. The `# hqg-backtest` line must be on its own, not after code. |
-| `npm: command not found` | Install Node.js (see [What you need](#what-you-need)), then open a new terminal. |
 | "The backtester turned down your sign-in" | Your token was rejected. Sign in to the dashboard again and paste the new token. |
 | "Your sign-in expired" | Tokens last 24 hours. Copy a fresh one from the dashboard. |
 | The equity line is flat and grey at the start | That's warm-up: your strategy was all cash while it gathered price history. The backtester sends no data from before your start date, so start the backtest earlier if you need results from a specific date. |
@@ -253,10 +206,85 @@ locally. The default is `https://platform.uconnquant.com/backtester`.
 
 ## Develop the extension
 
-After step 2, open the `hqg-vscode` folder in VS Code and press **F5**. A second VS Code window
-opens with your development copy of the extension loaded. After changing code, run
-**Developer: Reload Window** in that second window. To share your changes as a `.vsix`, run
-`npm run package` again.
+This section is for working on the extension itself. To just use it, install it from the
+Marketplace as described in [Install](#install).
+
+### What you need
+
+| | How to check | Where to get it |
+| --- | --- | --- |
+| **VS Code 1.90 or newer** | **Code → About Visual Studio Code** | [code.visualstudio.com](https://code.visualstudio.com) |
+| **Git** | `git --version` in a terminal | [git-scm.com](https://git-scm.com/downloads) |
+| **Node.js 18 or newer**, which includes `npm` | `node --version` | [nodejs.org](https://nodejs.org), the LTS version |
+
+### Step 1: Get the code
+
+```bash
+git clone https://github.com/Husky-Quantitative-Group/hqg-vscode.git
+cd hqg-vscode
+```
+
+### Step 2: Install the build tools
+
+```bash
+npm install
+```
+
+This downloads what the extension needs into a `node_modules` folder. It only has to be done once,
+and again after `package.json` changes.
+
+### Step 3: Run your copy
+
+Open the `hqg-vscode` folder in VS Code and press **F5**. A second VS Code window opens with your
+development copy of the extension loaded. After changing code, run **Developer: Reload Window** in
+that second window to see the change.
+
+If you also have the Marketplace version installed, disable it in the Extensions view while you
+work, so the two copies don't both show up.
+
+### Step 4: Build and install your own copy
+
+To use your build in your normal VS Code, or in Cursor, Windsurf or VSCodium:
+
+```bash
+npm run package                                  # builds hqg-vscode-0.1.0.vsix
+code --install-extension hqg-vscode-0.1.0.vsix
+```
+
+Then run **Developer: Reload Window**.
+
+<details>
+<summary><b>If it says <code>code: command not found</code></b></summary>
+
+1. Open VS Code.
+2. Press `⇧⌘P` (`Ctrl+Shift+P` on Windows) to open the Command Palette.
+3. Type **Shell Command: Install 'code' command in PATH** and press Enter.
+4. Open a new terminal, `cd` back into `hqg-vscode`, and run the command again.
+
+On Mac, VS Code must be in your **Applications** folder for this to work. If you'd rather not use
+the terminal: open the Extensions view, click the **⋯** menu at the top, choose
+**Install from VSIX…**, and pick the `.vsix` file.
+</details>
+
+To pick up other people's changes later: `git pull`, `npm install`, then run step 4 again with
+`--force` added to the install command.
+
+### Publish a new version
+
+For HQG maintainers. You need to be a member of the **hqg** publisher on the
+[Marketplace management page](https://marketplace.visualstudio.com/manage), and the
+[Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) (`brew install azure-cli`).
+
+1. Raise `version` in `package.json`, for example `0.1.0` → `0.1.1`, and describe the change at the
+   top of [CHANGELOG.md](CHANGELOG.md).
+2. Sign in with your Microsoft account: `az login`.
+3. Publish: `npm run publish`.
+
+Publishing signs in through the Azure CLI rather than a personal access token, because Microsoft
+retires token-based Marketplace publishing on December 1, 2026. Commit and push the version bump
+too, so GitHub matches the Marketplace.
+
+### Where things are
 
 | Path | What's there |
 | --- | --- |
@@ -265,4 +293,5 @@ opens with your development copy of the extension loaded. After changing code, r
 | `src/results.ts`, `media/results.*` | The results tab |
 | `src/api.ts` | The backtester API client, the same calls as [`cli/api.py`](https://github.com/Husky-Quantitative-Group/hqg-backtester/blob/main/cli/api.py) in hqg-backtester |
 | `src/auth.ts` | Token storage, and reading `~/.hqg/credentials` |
+| `media/icon.png` | The extension's icon on the Marketplace |
 | `docs/images/` | The screenshots in this README |
