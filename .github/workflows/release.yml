@@ -1,0 +1,46 @@
+name: Publish release
+
+# Publishing a GitHub release tagged vX.Y.Z builds the extension, publishes that version to Open VSX,
+# and attaches the .vsix to the release. The VS Code Marketplace is published by hand (see the
+# README's "Publish a new version"): UConn accounts can't create the Azure identity CI would need.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write # attach the .vsix to the release
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag matches package.json
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::The release tag is $GITHUB_REF_NAME but package.json says $version. Tag the release v$version."
+            exit 1
+          fi
+          echo "VSIX=hqg-backtester-$version.vsix" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build the extension
+        run: npx vsce package --out "$VSIX"
+
+      - name: Publish to Open VSX
+        run: npx ovsx publish "$VSIX" -p "$OVSX_PAT"
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+
+      - name: Attach the .vsix to the release
+        run: gh release upload "$GITHUB_REF_NAME" "$VSIX" --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}

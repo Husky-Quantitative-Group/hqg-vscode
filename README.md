@@ -274,33 +274,33 @@ To pick up other people's changes later: `git pull`, `npm install`, then run ste
 ### Publish a new version
 
 For HQG maintainers. Each release goes to both stores: the VS Code Marketplace, and Open VSX for
-Cursor, Windsurf and VSCodium.
+Cursor, Windsurf and VSCodium. Publishing a GitHub release does the Open VSX part for you. The
+Marketplace takes one command.
 
-You need:
-- Membership in the **hqg** publisher on the
-  [Marketplace management page](https://marketplace.visualstudio.com/manage), and the
-  [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) (`brew install azure-cli`).
-- Membership in the **hqg** namespace on [open-vsx.org](https://open-vsx.org), and an access token
-  from your Open VSX settings. Open VSX also asks you to sign the Eclipse publisher agreement once,
-  under **Settings → Profile**.
+You need membership in the **hqg** publisher on the
+[Marketplace management page](https://marketplace.visualstudio.com/manage), and the
+[Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) (`brew install azure-cli`).
 
-1. Raise `version` in `package.json`, for example `0.1.1` → `0.1.2`, and describe the change at the
-   top of [CHANGELOG.md](CHANGELOG.md).
-2. Build the release once: `npm run package`.
-3. Publish it to the VS Code Marketplace. Sign in with your Microsoft account first:
+1. Raise `version` in `package.json`, for example `0.1.1` → `0.1.2`, describe the change at the top
+   of [CHANGELOG.md](CHANGELOG.md), then commit and push.
+2. Create a GitHub release tagged with that version, for example `v0.1.2`, on
+   [Releases](https://github.com/Husky-Quantitative-Group/hqg-vscode/releases) → **Draft a new
+   release**, or with `gh release create v0.1.2 --generate-notes`. The **Publish release** GitHub
+   Action then builds the extension, publishes it to Open VSX, and attaches the `.vsix` to the
+   release. It stops with an error if the tag doesn't match `package.json`.
+3. Publish the same version to the VS Code Marketplace, from the `hqg-vscode` folder:
    ```bash
    az login --allow-no-subscriptions --scope "499b84ac-1321-427f-aa17-267ca6975798/.default"
-   npx vsce publish --azure-credential --packagePath hqg-backtester-<version>.vsix
+   npm run publish
    ```
    With a work or school account, add `--tenant <your-organization's-tenant-id>` to `az login`.
-4. Publish the same file to Open VSX:
-   ```bash
-   npx ovsx publish hqg-backtester-<version>.vsix -p <your-open-vsx-token>
-   ```
-5. Commit and push the version bump, so GitHub matches the stores.
+   For UConn that's `17f1a87e-2a25-4eaa-b9df-9d439034b080`.
 
-The Marketplace step signs in through the Azure CLI rather than a personal access token, because
-Microsoft retires token-based Marketplace publishing on December 1, 2026.
+The Marketplace step signs in through the Azure CLI, because Microsoft retires token-based
+Marketplace publishing on December 1, 2026. It isn't automated because UConn accounts can't create
+the Azure identity a GitHub Action would need. The Action's Open VSX token is the `OVSX_PAT`
+repository secret; to replace it, run `gh secret set OVSX_PAT` and paste a new token from your
+[Open VSX settings](https://open-vsx.org/user-settings/tokens).
 
 ### Where things are
 
