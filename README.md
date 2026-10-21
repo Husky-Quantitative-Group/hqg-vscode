@@ -1,6 +1,6 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="media/logo-white.png">
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/Husky-Quantitative-Group/hqg-vscode/raw/HEAD/media/logo-white.png">
     <img src="media/logo-black.png" alt="HQG" width="96">
   </picture>
 </p>
@@ -151,7 +151,7 @@ Activity Bar into the Secondary Side Bar. VS Code remembers where you put it.
 ## Read the results
 
 When the backtest finishes, the results open in a tab beside your code. The tab has the HQG
-candlestick icon <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/candles-dark.png"><img src="docs/images/candles-light.png" alt="" height="14"></picture>.
+candlestick icon <picture><source media="(prefers-color-scheme: dark)" srcset="https://github.com/Husky-Quantitative-Group/hqg-vscode/raw/HEAD/docs/images/candles-dark.png"><img src="docs/images/candles-light.png" alt="" height="14"></picture>.
 Each run opens its own tab, so you can compare runs side by side.
 
 ![The results tab: headline numbers, strategy metrics, the equity chart, the allocation chart and the execution log](docs/images/results.png)
