@@ -15,7 +15,7 @@ This extension does what the HQG command line tool (`hqg`, from [hqg-backtester]
 strategy to the HQG backtester and waits for the result. You pick the dates and starting equity in
 a side panel, press **Run Backtest**, and get the dashboard's results view inside VS Code.
 
-Install it from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=hqg.hqg-backtester) in under a minute. You don't need to read
+Install it from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=hqg.hqg-backtester), or from [Open VSX](https://open-vsx.org/extension/hqg/hqg-backtester) for Cursor, Windsurf and VSCodium, in under a minute. You don't need to read
 or build any code. If you want to work on the extension itself, see
 [Develop the extension](#develop-the-extension).
 
@@ -49,8 +49,10 @@ You can also click **Install** on its [Marketplace page](https://marketplace.vis
 code --install-extension hqg.hqg-backtester
 ```
 
-Using Cursor, Windsurf or VSCodium? They don't use the VS Code Marketplace yet, so build the
-extension yourself: see [Develop the extension](#develop-the-extension).
+**Using Cursor, Windsurf or VSCodium?** They install extensions from
+[Open VSX](https://open-vsx.org/extension/hqg/hqg-backtester) instead of the VS Code Marketplace. Open the editor's Extensions view, search
+for **HQG Backtester** by **hqg**, and click **Install**. In VSCodium you can also run
+`codium --install-extension hqg.hqg-backtester`.
 
 ### Step 2: Find the extension's icons
 
@@ -244,7 +246,7 @@ work, so the two copies don't both show up.
 
 ### Step 4: Build and install your own copy
 
-To use your build in your normal VS Code, or in Cursor, Windsurf or VSCodium:
+To try your build in your normal editor before it's published:
 
 ```bash
 npm run package                                  # builds hqg-backtester-0.1.0.vsix
@@ -271,18 +273,34 @@ To pick up other people's changes later: `git pull`, `npm install`, then run ste
 
 ### Publish a new version
 
-For HQG maintainers. You need to be a member of the **hqg** publisher on the
-[Marketplace management page](https://marketplace.visualstudio.com/manage), and the
-[Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) (`brew install azure-cli`).
+For HQG maintainers. Each release goes to both stores: the VS Code Marketplace, and Open VSX for
+Cursor, Windsurf and VSCodium.
 
-1. Raise `version` in `package.json`, for example `0.1.0` → `0.1.1`, and describe the change at the
+You need:
+- Membership in the **hqg** publisher on the
+  [Marketplace management page](https://marketplace.visualstudio.com/manage), and the
+  [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) (`brew install azure-cli`).
+- Membership in the **hqg** namespace on [open-vsx.org](https://open-vsx.org), and an access token
+  from your Open VSX settings. Open VSX also asks you to sign the Eclipse publisher agreement once,
+  under **Settings → Profile**.
+
+1. Raise `version` in `package.json`, for example `0.1.1` → `0.1.2`, and describe the change at the
    top of [CHANGELOG.md](CHANGELOG.md).
-2. Sign in with your Microsoft account: `az login`.
-3. Publish: `npm run publish`.
+2. Build the release once: `npm run package`.
+3. Publish it to the VS Code Marketplace. Sign in with your Microsoft account first:
+   ```bash
+   az login --allow-no-subscriptions --scope "499b84ac-1321-427f-aa17-267ca6975798/.default"
+   npx vsce publish --azure-credential --packagePath hqg-backtester-<version>.vsix
+   ```
+   With a work or school account, add `--tenant <your-organization's-tenant-id>` to `az login`.
+4. Publish the same file to Open VSX:
+   ```bash
+   npx ovsx publish hqg-backtester-<version>.vsix -p <your-open-vsx-token>
+   ```
+5. Commit and push the version bump, so GitHub matches the stores.
 
-Publishing signs in through the Azure CLI rather than a personal access token, because Microsoft
-retires token-based Marketplace publishing on December 1, 2026. Commit and push the version bump
-too, so GitHub matches the Marketplace.
+The Marketplace step signs in through the Azure CLI rather than a personal access token, because
+Microsoft retires token-based Marketplace publishing on December 1, 2026.
 
 ### Where things are
 

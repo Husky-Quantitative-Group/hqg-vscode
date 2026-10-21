@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+- Also published on [Open VSX](https://open-vsx.org/extension/hqg/hqg-backtester), so Cursor,
+  Windsurf and VSCodium users can install it from their editor's Extensions view.
+- The README covers installing in those editors and publishing to both stores.
+
 ## 0.1.0
 
 The first release on the VS Code Marketplace.
