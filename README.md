@@ -93,30 +93,27 @@ If you'd rather not use the terminal: in VS Code, open the Extensions view (`⇧
 
 Press `⇧⌘P` (`Ctrl+Shift+P` on Windows), type **Developer: Reload Window**, and press Enter.
 
-### Step 6: Find the HQG icons
+### Step 6: Find the extension's icons
 
 Open any Python file that has the `# hqg-backtest` line (see
-[Mark your strategy file](#mark-your-strategy-file)). The extension adds these:
+[Mark your strategy file](#mark-your-strategy-file)). The extension adds two chart icons:
 
-![VS Code with a strategy file open. Circled: the HQG icon in the Activity Bar, the chart icon above the file, the Run backtest link above the class, and Run Backtest in the status bar](docs/images/vscode-icons.png)
+![VS Code with a strategy file open. Circled: 1, the line-chart icon in the Activity Bar; 2, the chart icon above the file](docs/images/vscode-icons.png)
 
-1. **The HQG icon in the Activity Bar**, on the far left. It opens the **HQG Backtester** panel.
-   It's always there, even with no strategy open.
+1. **The line-chart icon in the Activity Bar**, on the far left. It opens the **HQG Backtester**
+   panel, and it's always there, even with no strategy open.
 2. **The chart icon above the file**, at the top-right of the editor. It shows only while a
-   strategy file is the current tab, and opens the panel.
-3. **▶ Run backtest**, just above your `class …(Strategy):` line. It opens the panel.
-4. **▶ Run Backtest in the status bar**, at the bottom-left. It shows only while a strategy file
-   is the current tab, and opens the panel.
+   strategy file is the current tab, and opens the same panel.
 
-All of them open the panel. The backtest itself starts from the panel's **Run Backtest** button.
+You run backtests from inside the panel, with its **Run Backtest** button.
 
 The extension is installed. Next, sign in.
 
 ## Sign in
 
-Click the HQG icon in the Activity Bar. The first time, the panel asks for your dashboard token:
+Click the line-chart icon in the Activity Bar. The first time, the panel asks for your dashboard token:
 
-<p align="center"><img src="docs/images/panel-sign-in.png" alt="The sign-in panel: a token box with steps for finding the token" width="300"></p>
+![VS Code with the HQG Backtester panel open on the left, showing the token box and the steps for finding the token, beside the strategy file](docs/images/vscode-sign-in.png)
 
 1. Sign in at [dashboard.uconnquant.com](https://dashboard.uconnquant.com).
 2. Open your browser's DevTools: `⌥⌘I` on Mac, `F12` on Windows.
@@ -154,10 +151,11 @@ Python files.
 ## Run a backtest
 
 1. Open your strategy file, so it's the current tab.
-2. Open the panel: click the HQG icon in the Activity Bar, or any of the other icons from
-   [step 6](#step-6-find-the-hqg-icons).
+2. Open the panel: click the line-chart icon in the Activity Bar, or the chart icon above the
+   file (see [step 6](#step-6-find-the-extensions-icons)). The panel shows your strategy's name
+   and the run settings:
 
-   ![The HQG Backtester panel open beside a strategy file](docs/images/vscode-panel.png)
+   ![Ready to run: the panel shows the strategy name, dates, starting equity and an enabled Run Backtest button](docs/images/vscode-ready.png)
 
 3. Fill in the run. The panel remembers your values for next time.
 
@@ -169,16 +167,16 @@ Python files.
    | **Timeout (seconds)** | How long to wait for the result before giving up. The run may still finish on the server. |
    | **Profile speed (slowest functions)** | Times every function while your strategy runs and lists the 40 slowest in the results' **Profile** tab. Use it to find out why a backtest is slow. The run takes a little longer, so leave it off normally. |
 
-4. Press **▶ Run Backtest**. The panel shows the job's progress and a **Cancel** button.
+4. Press **▶ Run Backtest**. While it runs, the panel shows the job's progress and a **Cancel**
+   button, and VS Code shows a progress notification at the bottom-right:
 
-<p align="center">
-  <img src="docs/images/panel-ready.png" alt="Ready to run: the panel shows the strategy name and an enabled Run Backtest button" width="260">
-  &nbsp;
-  <img src="docs/images/panel-running.png" alt="Running: the panel shows the job status and a Cancel button" width="260">
-  &nbsp;
-  <img src="docs/images/panel-no-strategy.png" alt="No strategy: the panel asks you to open one, and Run Backtest is greyed out" width="260">
-</p>
-<p align="center"><sub>Ready to run · Running · No strategy file open</sub></p>
+   ![Running: the panel shows "submitting" and a Cancel button, with a Backtesting main.py notification](docs/images/vscode-running.png)
+
+5. When it finishes, the results open in a tab on the right, beside your code:
+
+   ![The results tab open on the right of the strategy file, with final equity, net profit, return, the equity chart and the allocation chart](docs/images/vscode-results.png)
+
+   See [Read the results](#read-the-results) for what everything in it means.
 
 **The panel follows the current tab.** Switch to another strategy file and the panel switches with
 it. Switch to a file without the `# hqg-backtest` line, or close your strategy, and the panel asks
@@ -186,8 +184,8 @@ you to open one, with **Run Backtest** greyed out. You can click into the result
 strategy is still visible beside it, and the panel keeps the strategy, so you can run again straight
 away.
 
-**Want the panel on the right**, next to Claude Code or Copilot? Drag the HQG icon from the Activity
-Bar into the Secondary Side Bar. VS Code remembers where you put it.
+**Want the panel on the right**, next to Claude Code or Copilot? Drag the line-chart icon from the
+Activity Bar into the Secondary Side Bar. VS Code remembers where you put it.
 
 ## Read the results
 
@@ -241,9 +239,9 @@ until you run the backtest again.
 
 | What you see | What to do |
 | --- | --- |
-| No HQG icon in the Activity Bar | Run **Developer: Reload Window**. If it's still missing, run step 4 again and check it says `successfully installed`. |
+| No line-chart icon in the Activity Bar | Run **Developer: Reload Window**. If it's still missing, run step 4 again and check it says `successfully installed`. |
 | **Run Backtest** is greyed out | Make your strategy file the current tab, and check that `# hqg-backtest: <strategy-name>` is within its first 10 lines. |
-| The chart icon, status bar button or **▶ Run backtest** link doesn't show | Same as above. The line must be on its own, not after code. |
+| The chart icon above the file doesn't show | Same as above. The `# hqg-backtest` line must be on its own, not after code. |
 | `npm: command not found` | Install Node.js (see [What you need](#what-you-need)), then open a new terminal. |
 | "The backtester turned down your sign-in" | Your token was rejected. Sign in to the dashboard again and paste the new token. |
 | "Your sign-in expired" | Tokens last 24 hours. Copy a fresh one from the dashboard. |

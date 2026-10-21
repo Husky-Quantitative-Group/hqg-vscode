@@ -590,6 +590,8 @@
   // Keep the bars over the plot area (not the axes) and in step with the chart each frame;
   // the price axis has no change event, and this only touches the DOM when something moved.
   let lastSync = "";
+  // Whether the whole run is on screen; a resize then fits it again (see the ResizeObserver).
+  let showingWholeRun = true;
   function syncScrollbars() {
     const plotWidth = chartRoot.clientWidth - priceScale.width();
     const plotHeight = chartRoot.clientHeight - chart.timeScale().height();
@@ -603,7 +605,11 @@
       vscroll.style.left = `${plotWidth - 10}px`;
       vscroll.style.height = `${plotHeight}px`;
       // Count bars inclusively: from 0 to totalBars - 1 is every bar, a size of exactly 1.
-      if (logical) setHorizontal(logical.from / totalBars, (logical.to - logical.from + 1) / totalBars);
+      if (logical) {
+        const size = (logical.to - logical.from + 1) / totalBars;
+        showingWholeRun = size >= 0.99;
+        setHorizontal(logical.from / totalBars, size);
+      }
       if (prices) {
         const span = fullHigh - fullLow;
         setVertical((fullHigh - prices.to) / span, (prices.to - prices.from) / span);
@@ -617,7 +623,12 @@
   applyTheme();
   requestAnimationFrame(syncScrollbars);
   chart.timeScale().subscribeVisibleLogicalRangeChange(scheduleAllocation);
-  new ResizeObserver(scheduleAllocation).observe(chartRoot);
+  // Resizing keeps the visible dates, which can leave the bars a hair short of the edges; if the
+  // whole run was on screen, fit it again so it still is (and the scrollbars stay hidden).
+  new ResizeObserver(() => {
+    if (showingWholeRun) requestAnimationFrame(fitAll);
+    scheduleAllocation();
+  }).observe(chartRoot);
   // VS Code swaps the body class when the color theme changes.
   new MutationObserver(() => {
     applyTheme();
