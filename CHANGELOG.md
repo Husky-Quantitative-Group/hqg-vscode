@@ -3,7 +3,7 @@
 ## 0.2.0
 
 - **Local backtests.** A new **Local backtest** switch runs backtests on your own computer with the
-  same engine as the HQG server: about a second for 18 years of daily data, against about 11
+  same engine as the HQG server: about a second for 18 years of daily data, against 4 to 6
   seconds on the server. The first time, the extension sets up a private Python environment by
   itself (Python 3.11 or newer needed).
 - Local runs keep the engine loaded between runs, download a strategy's prices while you edit, and

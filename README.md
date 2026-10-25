@@ -169,7 +169,7 @@ Activity Bar into the Secondary Side Bar. VS Code remembers where you put it.
 
 Turn on **Local backtest** under the dates to run backtests on your own computer instead of the
 HQG server. It uses the same backtest engine and gives the same results, much faster: about a
-second for 18 years of daily data, against about 11 seconds on the server. You still need to be
+second for 18 years of daily data, against 4 to 6 seconds on the server. You still need to be
 signed in.
 
 - **The first time** you turn it on, the extension sets up a private Python environment and
