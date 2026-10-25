@@ -12,6 +12,8 @@ export type RunOptions = {
   name: string;
   timeoutSeconds: number;
   profile: boolean;
+  /** Run on this computer instead of the HQG server. */
+  local: boolean;
 };
 
 /** What the panel shows about the sign-in; never the token itself. */
@@ -30,6 +32,7 @@ const DEFAULTS: RunOptions = {
   name: "",
   timeoutSeconds: 600,
   profile: false,
+  local: false,
 };
 const OPTIONS_KEY = "hqg.runOptions";
 
@@ -42,6 +45,8 @@ type Handlers = {
   cancel: () => void;
   /** Checks and saves a pasted token; resolves to an error to show, or undefined on success. */
   signIn: (token: string) => Promise<string | undefined>;
+  /** Called whenever the form changes and is saved. */
+  optionsChanged: (options: RunOptions) => void;
 };
 
 const DASHBOARD_URL = "https://dashboard.uconnquant.com";
@@ -122,6 +127,11 @@ export class RunPanel implements vscode.WebviewViewProvider {
         <label>Start date<input type="date" name="start" required></label>
         <label>End date<input type="date" name="end" required></label>
       </div>
+      <label class="switch" title="Run the backtest on this computer instead of the HQG server. The first time, the extension sets up a private Python environment, which takes about a minute.">
+        <input type="checkbox" name="local" role="switch">
+        <span class="track" aria-hidden="true"></span>
+        Local backtest
+      </label>
       <label>Starting equity ($)<input type="number" name="capital" min="1" step="any" required></label>
       <label>Run name<input type="text" name="runName" placeholder="defaults to the strategy name"></label>
       <label>Timeout (seconds)<input type="number" name="timeoutSeconds" min="1" step="1" required></label>
@@ -155,6 +165,7 @@ export class RunPanel implements vscode.WebviewViewProvider {
           break;
         case "update":
           await this.context.globalState.update(OPTIONS_KEY, message.options);
+          this.handlers.optionsChanged(loadOptions(this.context));
           break;
         case "run":
           await this.context.globalState.update(OPTIONS_KEY, message.options);

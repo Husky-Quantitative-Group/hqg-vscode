@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 
 import { AuthError, BacktestClient, NetworkError } from "./api";
 import { AuthState, authState, markRejected, saveToken, signOut, tokenProblem } from "./auth";
+import { LocalCancelled, LocalEngine } from "./local";
 import { PanelAuth, RunOptions, RunPanel, loadOptions } from "./panel";
 import { showResults } from "./results";
 
@@ -25,14 +26,26 @@ let panel: RunPanel;
 let strategyUri: vscode.Uri | undefined;
 // Set while a backtest is in flight; calling it stops the run.
 let cancelRun: (() => void) | undefined;
+// Local backtests: the engine bundled in python/, and whether the panel's switch is on.
+let engine: LocalEngine;
+let localMode = false;
+let prefetchTimer: NodeJS.Timeout | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
   output = vscode.window.createOutputChannel("HQG Backtest");
   diagnostics = vscode.languages.createDiagnosticCollection("hqg");
+  engine = new LocalEngine(
+    context.extensionUri.fsPath,
+    context.globalStorageUri.fsPath,
+    (line) => output.appendLine(line),
+    () => vscode.workspace.getConfiguration("hqg").get<string>("localPython") || undefined
+  );
+  localMode = loadOptions(context).local;
   panel = new RunPanel(context, {
     run: () => runBacktest(context, strategyUri),
     cancel: () => cancelRun?.(),
     signIn: (token) => signInWithToken(context, token),
+    optionsChanged,
   });
   refreshAuth(context);
   // Tokens last 24 hours; re-check each minute so the panel notices expiry and `hqg login`.
@@ -61,6 +74,12 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("hqg.signOut", () => signOutCommand(context)),
     vscode.commands.registerCommand("hqg.health", () => checkHealth(context)),
     { dispose: () => clearInterval(authTimer) },
+    {
+      dispose: () => {
+        clearTimeout(prefetchTimer);
+        engine.dispose();
+      },
+    },
     vscode.languages.registerCodeLensProvider({ language: "python" }, { provideCodeLenses }),
     // Stale squiggles from the last run go away once the file is edited.
     vscode.workspace.onDidChangeTextDocument((event) => diagnostics.delete(event.document.uri))
@@ -113,6 +132,7 @@ function updateStrategyContext(): void {
   if (isStrategy) {
     strategyUri = document.uri;
     showStrategy(document);
+    prefetchSoon();
     return;
   }
   // Another file is in front, or the strategy is no longer on screen (e.g. every tab closed):
@@ -124,6 +144,44 @@ function updateStrategyContext(): void {
     strategyUri = undefined;
     showStrategy(undefined);
   }
+}
+
+/** Turning on Local backtest starts the one-time setup right away, so it's ready for the first run. */
+function optionsChanged(options: RunOptions): void {
+  const turnedOn = options.local && !localMode;
+  localMode = options.local;
+  if (!turnedOn) return;
+  if (engine.isSetUp()) {
+    prefetchSoon(0);
+    return;
+  }
+  vscode.window
+    .withProgress(
+      { location: vscode.ProgressLocation.Notification, title: "Setting up local backtests (one time)" },
+      (progress) =>
+        engine.setup((message) => {
+          output.appendLine(`  ${message}`);
+          progress.report({ message });
+        })
+    )
+    .then(
+      () => {
+        vscode.window.showInformationMessage("Local backtests are ready.");
+        prefetchSoon(0);
+      },
+      (err) => vscode.window.showErrorMessage(`Couldn't set up local backtests: ${(err as Error).message}`)
+    );
+}
+
+/** In local mode, download the current strategy's prices shortly after it's opened or edited. */
+function prefetchSoon(delayMs = 1500): void {
+  clearTimeout(prefetchTimer);
+  if (!localMode || !strategyUri || cancelRun || !engine.isSetUp()) return;
+  const uri = strategyUri.toString();
+  prefetchTimer = setTimeout(() => {
+    const document = vscode.workspace.textDocuments.find((doc) => doc.uri.toString() === uri);
+    if (document && !cancelRun) engine.prefetch(document.getText());
+  }, delayMs);
 }
 
 /** The editor's run buttons open the panel; the run itself starts from the panel's Run button. */
@@ -247,16 +305,55 @@ async function runBacktest(context: vscode.ExtensionContext, uri: vscode.Uri | u
   };
 
   diagnostics.delete(document.uri);
-  output.appendLine(`\n── ${fileName} · ${options.start} → ${options.end} · $${options.capital.toLocaleString()}`);
+  output.appendLine(
+    `\n── ${fileName} · ${options.start} → ${options.end} · $${options.capital.toLocaleString()}` +
+      (options.local ? " · local" : "")
+  );
 
   let panelCancelled = false;
-  cancelRun = () => (panelCancelled = true);
-  panel.setStatus("submitting", true);
+  cancelRun = () => {
+    panelCancelled = true;
+    if (options.local) engine.cancel();
+  };
+  panel.setStatus(options.local ? "starting" : "submitting", true);
 
   await vscode.window.withProgress(
-    { location: vscode.ProgressLocation.Notification, title: `Backtesting ${fileName}`, cancellable: true },
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: `Backtesting ${fileName}${options.local ? " locally" : ""}`,
+      cancellable: true,
+    },
     async (progress, cancellation) => {
       try {
+        if (options.local) {
+          cancellation.onCancellationRequested(() => engine.cancel());
+          if (!engine.isSetUp()) {
+            await engine.setup((message) => {
+              status(message);
+              progress.report({ message });
+            });
+          }
+          status("running locally");
+          progress.report({ message: "running locally" });
+          const started = Date.now();
+          const { result, logs } = await engine.run(
+            {
+              code: document.getText(),
+              name,
+              start: options.start,
+              end: options.end,
+              capital: options.capital,
+              profile: options.profile,
+            },
+            options.timeoutSeconds * 1000
+          );
+          for (const line of logs) output.appendLine(`  ${line}`);
+          const elapsed = (Date.now() - started) / 1000;
+          status(`completed locally in ${elapsed.toFixed(1)}s; results opened beside the file`, false);
+          showResults(context, result, logs, fileName, elapsed);
+          return;
+        }
+
         const client = new BacktestClient(apiUrl(), auth.token);
         await client.health();
         const jobId = await client.submit({
@@ -306,6 +403,20 @@ async function runBacktest(context: vscode.ExtensionContext, uri: vscode.Uri | u
         showResults(context, record.result, record.logs ?? [], fileName, elapsed);
       } catch (err) {
         const message = (err as Error).message;
+        if (err instanceof LocalCancelled) {
+          status("cancelled", false);
+          vscode.window.showInformationMessage("Backtest stopped.");
+          return;
+        }
+        if (options.local) {
+          // The local engine words strategy errors like the server, so they get squiggles too.
+          status(`failed: ${message}`, false);
+          reportErrors(document, message);
+          vscode.window.showErrorMessage(`Backtest failed: ${message}`, "Show Output").then((choice) => {
+            if (choice) output.show(true);
+          });
+          return;
+        }
         status(message, false);
         if (err instanceof AuthError) {
           // Revoked or otherwise refused before it expired: back to the Sign In button.

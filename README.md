@@ -23,6 +23,7 @@ extension itself, see [Develop the extension](#develop-the-extension).
 - [Sign in](#sign-in)
 - [Mark your strategy file](#mark-your-strategy-file)
 - [Run a backtest](#run-a-backtest)
+- [Local backtests](#local-backtests)
 - [Read the results](#read-the-results)
 - [Updates](#updates)
 - [Troubleshooting](#troubleshooting)
@@ -128,7 +129,7 @@ Python files.
 
 1. Open your strategy file, so it's the current tab.
 2. Open the panel: click the line-chart icon in the Activity Bar, or the chart icon above the
-   file (see [step 6](#step-2-find-the-extensions-icons)). The panel shows your strategy's name
+   file (see [step 2](#step-2-find-the-extensions-icons)). The panel shows your strategy's name
    and the run settings:
 
    ![Ready to run: the panel shows the strategy name, dates, starting equity and an enabled Run Backtest button](docs/images/vscode-ready.png)
@@ -138,6 +139,7 @@ Python files.
    | Field | What it does |
    | --- | --- |
    | **Start date / End date** | The period to backtest. |
+   | **Local backtest** | Run on your own computer instead of the HQG server. Much faster; see [Local backtests](#local-backtests). |
    | **Starting equity ($)** | The cash the strategy starts with. |
    | **Run name** | Leave empty to use the name from `# hqg-backtest`. Anything you type here is used for every strategy until you clear it. |
    | **Timeout (seconds)** | How long to wait for the result before giving up. The run may still finish on the server. |
@@ -162,6 +164,30 @@ away.
 
 **Want the panel on the right**, next to Claude Code or Copilot? Drag the line-chart icon from the
 Activity Bar into the Secondary Side Bar. VS Code remembers where you put it.
+
+## Local backtests
+
+Turn on **Local backtest** under the dates to run backtests on your own computer instead of the
+HQG server. It uses the same backtest engine and gives the same results, much faster: about a
+second for 18 years of daily data, against about 11 seconds on the server. You still need to be
+signed in.
+
+- **The first time** you turn it on, the extension sets up a private Python environment and
+  installs pandas, yfinance and a few other libraries into it. That takes about a minute, and runs
+  in the background while you keep working. Your own Python and packages aren't touched.
+- **You need Python 3.11 or newer** installed. The extension finds it by itself; to choose a
+  specific one, set **hqg.localPython** in Settings to its command or path.
+- **Prices download once per ticker** from Yahoo Finance, the same source the server uses, and are
+  kept on your computer. The first run with new tickers waits a second or two for that; after
+  that, runs read them from disk. With local mode on, the extension also downloads them while you
+  edit, as soon as you open a strategy or change its `universe`.
+- **Strategies run as ordinary Python on your computer.** The server runs each one in a locked-down
+  container; locally there's no such sandbox, so only run code you trust.
+- **Alt data from FRED** needs a free [FRED API key](https://fred.stlouisfed.org/docs/api/api_key.html)
+  in a `FRED_API_KEY` environment variable when you start VS Code. Price data needs nothing.
+
+Everything is stored in VS Code's storage for the extension, so uninstalling the extension removes
+it.
 
 ## Read the results
 
@@ -217,6 +243,9 @@ backtest again.
 | "Your sign-in expired" | Tokens last 24 hours. Copy a fresh one from the dashboard. |
 | The equity line is flat and grey at the start | That's warm-up: your strategy was all cash while it gathered price history. The backtester sends no data from before your start date, so start the backtest earlier if you need results from a specific date. |
 | Not sure the backtester is up | Press **Check Service** at the bottom of the panel. |
+| "Local backtests need Python 3.11 or newer" | Install Python from [python.org](https://www.python.org/downloads/), then turn **Local backtest** off and on again. Or set **hqg.localPython** to a Python you already have. |
+| The first local run is slow | It's downloading the strategy's prices once. Later runs with the same tickers read them from disk. |
+| A local run fails on FRED alt data | Set a `FRED_API_KEY` environment variable and restart VS Code. See [Local backtests](#local-backtests). |
 
 **Setting:** `hqg.apiUrl` points the extension at a different backtester, for example one you run
 locally. The default is `https://platform.uconnquant.com/backtester`.
@@ -317,6 +346,21 @@ the Azure identity a GitHub Action would need. The Action's Open VSX token is th
 repository secret; to replace it, run `gh secret set OVSX_PAT` and paste a new token from your
 [Open VSX settings](https://open-vsx.org/user-settings/tokens).
 
+### Update the local engine
+
+Local backtests run a copy of the HQG backtest engine bundled in `python/vendor/`, so their results
+match the server. When `hqg-backtester`, `hqg-datafeed` or `hqg-algorithms` change, refresh the copy
+before releasing:
+
+```bash
+./scripts/sync-engine.sh
+```
+
+It copies the current `main` branch of each repo from GitHub, without touching your own clones,
+and records the commits in `python/vendor/VERSIONS.txt`. It expects the three repos cloned next to
+`hqg-vscode`; set `HQG_REPOS` to their folder otherwise. Commit the result. If you change
+`python/requirements.txt`, members' private environments update themselves on their next local run.
+
 ### Where things are
 
 | Path | What's there |
@@ -326,5 +370,9 @@ repository secret; to replace it, run `gh secret set OVSX_PAT` and paste a new t
 | `src/results.ts`, `media/results.*` | The results tab |
 | `src/api.ts` | The backtester API client, the same calls as [`cli/api.py`](https://github.com/Husky-Quantitative-Group/hqg-backtester/blob/main/cli/api.py) in hqg-backtester |
 | `src/auth.ts` | Token storage, and reading `~/.hqg/credentials` |
+| `src/local.ts` | Local backtests: the private Python environment and the background worker |
+| `python/hqg_local/worker.py` | The worker that runs local backtests with the bundled engine |
+| `python/vendor/` | The bundled engine, from hqg-backtester, hqg-datafeed and hqg-algorithms |
+| `scripts/sync-engine.sh` | Refreshes `python/vendor/` from GitHub |
 | `media/icon.png` | The extension's icon on the Marketplace |
 | `docs/images/` | The screenshots in this README |

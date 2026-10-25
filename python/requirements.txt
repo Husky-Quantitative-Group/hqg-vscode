@@ -1,0 +1,11 @@
+# Libraries for local backtests. The extension installs these into its own private environment;
+# the HQG packages themselves are bundled in python/vendor/. Changing this file makes the
+# extension reinstall them on the next local run.
+pydantic>=2.10,<3
+pydantic-settings>=2
+numpy
+pandas>=3.0
+yfinance
+pyarrow
+requests
+python-dotenv

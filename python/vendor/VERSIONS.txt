@@ -1,0 +1,3 @@
+hqg-backtester 3d5a15a
+hqg-datafeed ed2873f
+hqg-algorithms 3df980d

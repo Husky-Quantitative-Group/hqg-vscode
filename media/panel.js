@@ -21,6 +21,7 @@
     name: form.runName.value.trim(),
     timeoutSeconds: Number(form.timeoutSeconds.value),
     profile: form.profile.checked,
+    local: form.local.checked,
   });
 
   const problem = (o) => {
@@ -88,6 +89,7 @@
       form.runName.value = o.name;
       form.timeoutSeconds.value = o.timeoutSeconds;
       form.profile.checked = o.profile;
+      form.local.checked = Boolean(o.local);
     } else if (data.type === "showSignIn") {
       tokenForm.token.focus();
     } else if (data.type === "signInResult") {

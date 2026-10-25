@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0
+
+- **Local backtests.** A new **Local backtest** switch runs backtests on your own computer with the
+  same engine as the HQG server: about a second for 18 years of daily data, against about 11
+  seconds on the server. The first time, the extension sets up a private Python environment by
+  itself (Python 3.11 or newer needed).
+- Local runs keep the engine loaded between runs, download a strategy's prices while you edit, and
+  pass prices to the engine directly, so repeat runs are close to instant.
+
 ## 0.1.3
 
 - Fixed the README's logo and tab icon showing as broken images on dark pages, including Open VSX

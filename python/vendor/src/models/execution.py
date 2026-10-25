@@ -1,0 +1,32 @@
+from pydantic import BaseModel, Field
+from hqg_algorithms import BarSize
+from datetime import datetime
+from typing import Optional, Dict, List, Any
+from ..models.request import BacktestRequestError
+
+class ExecutionPayload(BaseModel):
+    strategy_code: str = Field(..., description="Raw Python strategy code to execute", min_length=10)
+    name: Optional[str] = Field(default="Unnamed Backtest", description="Name for this backtest run")
+    start_date: datetime
+    end_date: datetime
+    bar_size: BarSize = Field(default=None, description="Strategy BarSize")
+    initial_capital: float = Field(default=100000.0, description="Starting cash of Python strategy", gt=0)
+    market_data: Dict[str, Any] = Field(..., description="Pre-fetched OHLC data")
+    alt_data: Dict[str, Any] = Field(default_factory=dict, description="Pre-fetched alternative data")
+    config_params: Optional[Dict[str, Any]] = Field(default=None, description="Config parameters to inject as 'config' module in sandbox")
+
+
+class RawExecutionResult(BaseModel):
+    orders: List[Dict[str, Any]] = Field(default_factory=list, description="Raw trade data")
+    equity_curve: Dict[str, float] = Field(default_factory=dict, description="Timestamp -> equity mapping")
+    ohlc: Dict[str, Dict[str, float]] = Field(default_factory=dict, description="Timestamp -> portfolio OHLC")
+    holding_weights: Dict[str, Dict[str, float]] = Field(default_factory=dict, description="Timestamp -> holding weights")
+    final_value: float = Field(..., description="Final portfolio value")
+    final_cash: float = Field(..., description="Final cash balance")
+    final_positions: Dict[str, float] = Field(default_factory=dict, description="Final positions held")
+
+    execution_time: Optional[float] = Field(default=None, description="Execution time in seconds")
+    errors: BacktestRequestError = Field(default_factory=BacktestRequestError, description="Any errors encountered during execution")
+    bar_size: BarSize = Field(default=None, description="Strategy BarSize")
+    strategy_logs: List[str] = Field(default_factory=list, description="Messages emitted via self.log() during strategy execution")
+    profile: Optional[str] = Field(default=None, description="cProfile stats from the container, when profiling is enabled")
