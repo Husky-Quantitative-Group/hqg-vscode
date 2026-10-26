@@ -5,6 +5,27 @@ import * as vscode from "vscode";
 
 import { BacktestResult } from "./api";
 
+const COMPARE_KEY = "hqg.compareSp500";
+
+/**
+ * Daily closes of a Yahoo symbol, keyed by UTC midnight. The engine measures against ^GSPC (the
+ * S&P 500) and takes its risk-free rate from ^IRX (the 3-month T-bill yield, in percent).
+ */
+async function fetchDaily(symbol: string, from: number, to: number): Promise<{ time: number; close: number }[]> {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${from}&period2=${to}&interval=1d`;
+  // Yahoo answers a browser user agent much faster than Node's default one.
+  const response = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+  if (!response.ok) throw new Error(`Yahoo Finance answered HTTP ${response.status}.`);
+  const chart = ((await response.json()) as any)?.chart?.result?.[0];
+  const times: number[] = chart?.timestamp ?? [];
+  const closes: (number | null)[] = chart?.indicators?.quote?.[0]?.close ?? [];
+  const points = times
+    .map((t, i) => ({ time: Math.floor(t / 86400) * 86400, close: closes[i] as number }))
+    .filter((p) => Number.isFinite(p.close));
+  if (!points.length) throw new Error(`Yahoo Finance sent no ${symbol} prices for these dates.`);
+  return points;
+}
+
 export function showResults(
   context: vscode.ExtensionContext,
   result: BacktestResult,
@@ -31,7 +52,36 @@ export function showResults(
   const nonce = crypto.randomBytes(16).toString("base64");
   const asset = (base: vscode.Uri, file: string) => webview.asWebviewUri(vscode.Uri.joinPath(base, file));
   // Escape "<" so strategy-controlled strings can never close the script tag.
-  const data = JSON.stringify({ result, logs, fileName, elapsedSeconds }).replace(/</g, "\\u003c");
+  const compare = context.globalState.get<boolean>(COMPARE_KEY, false);
+  const data = JSON.stringify({ result, logs, fileName, elapsedSeconds, compare }).replace(/</g, "\\u003c");
+
+  // Whether Expand maximized this tab's editor group, so Collapse only undoes what it did.
+  let maximized = false;
+  const setMaximized = async (on: boolean) => {
+    if (on === maximized || (on && !panel.active)) return;
+    maximized = on;
+    // Older VS Code versions lack the command; the charts still float within the tab.
+    await vscode.commands.executeCommand("workbench.action.toggleMaximizeEditorGroup").then(undefined, () => {});
+  };
+
+  webview.onDidReceiveMessage(async (message) => {
+    if (message?.type === "expand") {
+      await setMaximized(Boolean(message.on));
+    } else if (message?.type === "compare") {
+      await context.globalState.update(COMPARE_KEY, Boolean(message.on));
+    } else if (message?.type === "sp500") {
+      try {
+        // Without the T-bill rate the S&P 500 metrics fall back to 3.5%, as the engine does.
+        const [points, irx] = await Promise.all([
+          fetchDaily("^GSPC", message.from, message.to),
+          fetchDaily("^IRX", message.from, message.to).catch(() => []),
+        ]);
+        webview.postMessage({ type: "sp500", points, irx });
+      } catch (error) {
+        webview.postMessage({ type: "sp500", error: error instanceof Error ? error.message : String(error) });
+      }
+    }
+  });
 
   webview.html = renderResultsHtml({
     csp: `default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';`,
@@ -82,6 +132,10 @@ export function renderResultsHtml(page: {
             <button data-type="candles" class="active">Candles</button>
             <button data-type="line">Line</button>
           </div>
+          <label class="compare" title="Show what the starting equity would be worth in the S&amp;P 500 index over the same dates">
+            <input type="checkbox" id="compare"><span class="stroke sp500"></span>Compare with S&amp;P 500
+          </label>
+          <span id="compare-note" class="compare-note" hidden></span>
         </div>
         <div class="group">
           <div class="segmented" id="zoom" title="You can also scroll to zoom and drag to pan">
@@ -97,6 +151,7 @@ export function renderResultsHtml(page: {
             <button data-range="ALL" class="active">All</button>
           </div>
         </div>
+        <button id="expand" class="expand" title="Expand the charts" aria-label="Expand the charts"></button>
       </div>
       <div class="chart-frame">
         <div id="price-grid" class="price-grid"></div>
@@ -117,6 +172,8 @@ export function renderResultsHtml(page: {
       <div id="legend" class="legend"></div>
     </section>
   </div>
+
+  <div id="backdrop" class="backdrop" hidden></div>
 
   <section class="card log">
     <div class="card-head">

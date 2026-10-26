@@ -157,6 +157,36 @@ h1 {
   font-variant-numeric: tabular-nums;
 }
 
+/* With the S&P 500 comparison on, the metrics get a second column and a wider card (unless the
+   tab is narrow enough to stack them under the chart). */
+@media (min-width: 761px) {
+  .main.comparing {
+    grid-template-columns: 320px minmax(0, 1fr);
+  }
+}
+
+.comparing .metric {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.comparing .metric dd {
+  min-width: 72px;
+  text-align: right;
+}
+
+.metric.head dd {
+  color: var(--muted);
+  font-size: 0.8em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.metric.head dd.sp500 {
+  color: var(--vscode-foreground);
+}
+
 .segmented {
   display: flex;
   border: 1px solid var(--border);
@@ -191,6 +221,111 @@ button.ghost:hover:not(:disabled) {
 
 .segmented button[hidden] {
   display: none;
+}
+
+label.compare {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.85em;
+  cursor: pointer;
+}
+
+label.compare:hover {
+  color: var(--vscode-foreground);
+}
+
+label.compare input {
+  margin: 0;
+  accent-color: var(--vscode-button-background);
+  cursor: pointer;
+}
+
+/* A short stroke, like the S&P 500 line itself. */
+.stroke.sp500 {
+  display: inline-block;
+  width: 14px;
+  border-top: 2px solid var(--vscode-foreground);
+}
+
+.compare-note {
+  color: var(--muted);
+  font-size: 0.8em;
+}
+
+/* The expand button sits in the card's top-right corner; the header keeps room for it. */
+.card.equity {
+  position: relative;
+}
+
+.card.equity .card-head {
+  padding-right: 44px;
+}
+
+button.expand {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 26px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+button.expand:hover {
+  color: var(--vscode-foreground);
+}
+
+/* Expand: the equity card floats over a dimmed page, and the chart takes the spare height. */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.backdrop[hidden] {
+  display: none;
+}
+
+body.expanded {
+  overflow: hidden;
+}
+
+.card.equity.expanded {
+  position: fixed;
+  inset: 24px;
+  z-index: 21;
+  max-width: 1800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  background: linear-gradient(var(--surface), var(--surface)), var(--vscode-editor-background);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.expanded .chart-frame {
+  flex: 1 1 auto;
+  min-height: 300px;
+}
+
+.expanded #chart {
+  height: 100%;
+}
+
+.expanded .allocation {
+  flex: none;
+  height: 22%;
+  min-height: 130px;
 }
 
 .chart-frame {

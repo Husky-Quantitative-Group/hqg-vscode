@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1
+
+- **Compare with S&P 500.** A box above the equity chart adds a white (or, in light themes,
+  black) line for the starting equity invested in the S&P 500 index over the same dates, with
+  its value in the hover, and an S&P 500 column in the metrics table, computed with the
+  engine's formulas. It works for server and local runs and stays ticked for later runs.
+- An expand button in the equity card's corner shows the equity and allocation charts large in
+  the middle of the window; the same button or Esc puts them back.
+- The allocation chart's colors are all different now. Before, strategies holding more than 16
+  assets reused colors (BIL and VNQ were the same blue).
+
 ## 0.2.0
 
 - **Local backtests.** A new **Local backtest** switch runs backtests on your own computer with the

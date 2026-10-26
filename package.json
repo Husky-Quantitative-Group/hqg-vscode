@@ -2,7 +2,7 @@
   "name": "hqg-backtester",
   "displayName": "HQG Backtester",
   "description": "Run HQG backtests from your editor and see the results beside your strategy.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "hqg",
   "license": "MIT",
   "icon": "media/icon.png",

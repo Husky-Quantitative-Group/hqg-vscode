@@ -201,7 +201,14 @@ Each run opens its own tab, so you can compare runs side by side.
 - **Strategy metrics**, on the left: Sharpe, Sortino, Calmar, alpha, beta, drawdown, VaR and more.
 - **Strategy equity:** your portfolio's value over time.
   - Switch between **Candles** and **Line**.
+  - Tick **Compare with S&P 500** to add a white line (black in light themes): what your starting equity would be worth
+    if you had put it all in the S&P 500 index on the first day. The metrics table then shows the
+    S&P 500's Sharpe, drawdown and other numbers beside your strategy's, worked out the same way
+    as the engine's. The box stays ticked for later runs until you untick it.
   - Jump to the last **1M / 6M / 1Y / 5Y**, or show **All**.
+  - The expand button (two outward arrows) in the card's top-right corner shows the equity and
+    allocation charts large in the middle of the window (the strategy file hides for the moment).
+    The same button, now with inward arrows, or Esc puts them back.
   - Zoom with **− / +**, by scrolling over the chart, or by dragging the price axis. **Fit** shows
     the whole run again. Drag the chart to pan.
   - When zoomed in, thin scrollbars appear along the bottom (time) and right side (price) of the

@@ -1,6 +1,7 @@
 // Renders a backtest result inside the webview, laid out like the dashboard's backtest page.
 (function () {
-  const { result, logs, fileName, elapsedSeconds } = JSON.parse(document.getElementById("data").textContent);
+  const { result, logs, fileName, elapsedSeconds, compare } = JSON.parse(document.getElementById("data").textContent);
+  const vscode = acquireVsCodeApi();
   const metrics = result.metrics || {};
   const params = result.parameters || {};
   const orders = result.orders || [];
@@ -49,28 +50,41 @@
     statsRoot.append(card);
   }
 
-  const metricRows = [
-    ["Sharpe", number(metrics.sharpe)],
-    ["Sortino", number(metrics.sortino)],
-    ["Calmar", number(metrics.calmar)],
-    ["Alpha", number(metrics.alpha)],
-    ["Beta", number(metrics.beta)],
-    ["PSR", number(metrics.psr)],
-    ["Total Orders", count(metrics.total_orders)],
-    ["Total Return", pct(metrics.total_pct_return)],
-    ["CAGR", pct(metrics.annualized_return)],
-    ["Ann. Volatility", pct(metrics.ann_vol)],
-    ["Max Drawdown", pct(metrics.max_drawdown)],
-    ["Max DD Duration", missing(metrics.max_drawdown_duration) ? "—" : `${count(metrics.max_drawdown_duration)} bars`],
-    ["VaR (95%)", pct(metrics.var_95)],
-    ["CVaR (95%)", pct(metrics.cvar_95)],
+  const metricRows = (m) => [
+    ["Sharpe", number(m.sharpe)],
+    ["Sortino", number(m.sortino)],
+    ["Calmar", number(m.calmar)],
+    ["Alpha", number(m.alpha)],
+    ["Beta", number(m.beta)],
+    ["PSR", number(m.psr)],
+    ["Total Orders", count(m.total_orders)],
+    ["Total Return", pct(m.total_pct_return)],
+    ["CAGR", pct(m.annualized_return)],
+    ["Ann. Volatility", pct(m.ann_vol)],
+    ["Max Drawdown", pct(m.max_drawdown)],
+    ["Max DD Duration", missing(m.max_drawdown_duration) ? "—" : `${count(m.max_drawdown_duration)} bars`],
+    ["VaR (95%)", pct(m.var_95)],
+    ["CVaR (95%)", pct(m.cvar_95)],
   ];
   const metricsRoot = document.getElementById("metrics");
-  for (const [label, value] of metricRows) {
-    const row = el("div", "metric");
-    row.append(el("dt", "", label), el("dd", "", value));
-    metricsRoot.append(row);
+  // The strategy's metrics, with the S&P 500's beside them while the comparison is on.
+  function renderMetrics(benchmark) {
+    metricsRoot.replaceChildren();
+    document.querySelector(".main").classList.toggle("comparing", Boolean(benchmark));
+    if (benchmark) {
+      const head = el("div", "metric head");
+      head.append(el("dt", ""), el("dd", "", "Strategy"), el("dd", "sp500", "S&P 500"));
+      metricsRoot.append(head);
+    }
+    const others = benchmark && metricRows(benchmark);
+    metricRows(metrics).forEach(([label, value], i) => {
+      const row = el("div", "metric");
+      row.append(el("dt", "", label), el("dd", "", value));
+      if (others) row.append(el("dd", "", others[i][1]));
+      metricsRoot.append(row);
+    });
   }
+  renderMetrics(null);
 
   // ── allocation over time (same method as the dashboard) ─────
   const candles = [...(result.candles || [])]
@@ -133,13 +147,18 @@
   }
 
   const allocation = buildAllocation();
+  // 18 clearly different colors (after Sasha Trubetskoy's "20 distinct colors", with the ones
+  // too dark for dark themes or too pale for light themes swapped for mid tones); grey is Cash.
   const PALETTE = [
-    "#4e8ef7", "#3fb68b", "#e5a33b", "#e0628f", "#9a7cf0", "#e86f55", "#3bb7d6", "#d6884a",
-    "#5fc4a8", "#c6b13c", "#7d93e8", "#d070c9", "#66a95b", "#c95f6a", "#4aa3c4", "#b4884f",
+    "#4363d8", "#3cb44b", "#ffe119", "#e6194b", "#f58231", "#911eb4", "#42d4f4", "#f032e6",
+    "#bfef45", "#fabed4", "#469990", "#dcbeff", "#9a6324", "#d2b48c", "#a83232", "#7b68ee",
+    "#26358c", "#fa8072",
   ];
-  const colorOf = new Map(
-    allocation.keys.map((key, i) => [key, key === "Cash" ? "#8b929e" : PALETTE[i % PALETTE.length]])
-  );
+  // Past the palette, step around the color wheel by the golden angle so no two assets match.
+  const colorAt = (i) =>
+    i < PALETTE.length ? PALETTE[i] : `hsl(${Math.round((i * 137.508) % 360)}, 70%, ${i % 2 ? 45 : 65}%)`;
+  let nextColor = 0;
+  const colorOf = new Map(allocation.keys.map((key) => [key, key === "Cash" ? "#8b929e" : colorAt(nextColor++)]));
 
   const legend = document.getElementById("legend");
   if (allocation.keys.length) legend.append(el("span", "legend-title", "Legend"));
@@ -159,6 +178,8 @@
     down: themeColor("--vscode-charts-red", "#fb7185"),
     line: themeColor("--vscode-charts-blue", "#4e8ef7"),
     cash: themeColor("--vscode-descriptionForeground", "#8b929e"),
+    // The theme's text color (white or black): no asset or candle uses it.
+    sp500: themeColor("--vscode-foreground", "#cccccc"),
   });
 
   const LC = window.LightweightCharts;
@@ -207,6 +228,10 @@
 
   let chartType = "candles";
   let series;
+  // The S&P 500 comparison line: its points once loaded, and its series while it's shown.
+  let sp500Data = null;
+  let sp500Series = null;
+  const sp500Options = () => ({ color: colors().sp500, lineWidth: 2, priceLineVisible: false });
   const seriesOptions = () => {
     const c = colors();
     return chartType === "candles"
@@ -243,6 +268,7 @@
   const applyTheme = () => {
     chart.applyOptions({ layout: { textColor: colors().text } });
     series.applyOptions(seriesOptions());
+    if (sp500Series) sp500Series.applyOptions(sp500Options());
     scheduleAllocation();
   };
   // The cash-only grey is baked into each bar, so a theme change re-sends the bars too.
@@ -319,6 +345,8 @@
       chartType === "candles"
         ? [["Open", bar.open], ["High", bar.high], ["Low", bar.low], ["Close", bar.close]]
         : [["Equity", bar.value]];
+    const sp500 = sp500Series && param.seriesData.get(sp500Series);
+    if (sp500 && sp500.value !== undefined) rows.push(["S&P 500", sp500.value]);
     for (const [label, value] of rows) {
       const row = el("div", "tooltip-row");
       row.append(el("span", "", label), el("span", "", money(value)));
@@ -517,12 +545,26 @@
 
   const priceScale = chart.priceScale("right");
   const totalBars = candles.length + 2 * PAD;
-  // The vertical bar spans the run's lowest low to highest high. The price scale reports its
-  // range without its own margins, so with every bar in view the two match and the bar hides.
-  const fullLow = candles.length ? candles.reduce((m, c) => Math.min(m, c.low), Infinity) : 0;
-  const priceMax = candles.length ? candles.reduce((m, c) => Math.max(m, c.high), -Infinity) : 1;
-  // A run that never moved still needs a non-zero span.
-  const fullHigh = priceMax > fullLow ? priceMax : fullLow + 1;
+  // The vertical bar spans the run's lowest low to highest high (and the S&P 500 line's, when
+  // shown). The price scale reports its range without its own margins, so with every bar in
+  // view the two match and the bar hides.
+  let fullLow = 0;
+  let fullHigh = 1;
+  function setPriceBounds() {
+    let low = candles.length ? candles.reduce((m, c) => Math.min(m, c.low), Infinity) : 0;
+    let high = candles.length ? candles.reduce((m, c) => Math.max(m, c.high), -Infinity) : 1;
+    if (sp500Series) {
+      for (const p of sp500Data) {
+        if (p.value === undefined) continue;
+        low = Math.min(low, p.value);
+        high = Math.max(high, p.value);
+      }
+    }
+    fullLow = low;
+    // A run that never moved still needs a non-zero span.
+    fullHigh = high > low ? high : low + 1;
+  }
+  setPriceBounds();
 
   const hscroll = document.getElementById("hscroll");
   const vscroll = document.getElementById("vscroll");
@@ -597,7 +639,7 @@
     const plotHeight = chartRoot.clientHeight - chart.timeScale().height();
     const logical = chart.timeScale().getVisibleLogicalRange();
     const prices = priceScale.getVisibleRange();
-    const key = [plotWidth, plotHeight, logical?.from, logical?.to, prices?.from, prices?.to].join();
+    const key = [plotWidth, plotHeight, logical?.from, logical?.to, prices?.from, prices?.to, fullLow, fullHigh].join();
     if (key !== lastSync) {
       lastSync = key;
       hscroll.style.width = `${plotWidth}px`;
@@ -619,8 +661,200 @@
     requestAnimationFrame(syncScrollbars);
   }
 
+  // ── S&P 500 comparison ──────────────────────────────────────
+  // The extension fetches the index (the webview can't reach the network) and the line shows the
+  // starting equity invested in it on the first day, one point per candle so the chart's bars
+  // and the allocation stay lined up.
+  const compareBox = document.getElementById("compare");
+  const compareNote = document.getElementById("compare-note");
+  let loadingSp500 = false;
+
+  function sp500Line(points) {
+    const closes = [];
+    let close;
+    for (let i = 0, j = 0; i < candles.length; i++) {
+      // The last close on or before each candle's day; a market holiday repeats the day before.
+      while (j < points.length && points[j].time <= candles[i].time) close = points[j++].close;
+      closes.push(close);
+    }
+    const base = closes.find((c) => c !== undefined);
+    return candles.map((c, i) =>
+      closes[i] === undefined ? { time: c.time } : { time: c.time, value: (params.starting_equity * closes[i]) / base }
+    );
+  }
+
+  // ── engine metrics for the S&P 500 (same formulas as src/utils/metrics.py) ──
+  const BARS_PER_YEAR = 252;
+  const mean = (xs) => xs.reduce((s, x) => s + x, 0) / xs.length;
+  const sampleStd = (xs) => {
+    const m = mean(xs);
+    return Math.sqrt(xs.reduce((s, x) => s + (x - m) ** 2, 0) / (xs.length - 1));
+  };
+  // pandas' bias-corrected skew and excess kurtosis.
+  function skewKurt(xs) {
+    const n = xs.length;
+    const m = mean(xs);
+    let s2 = 0, s3 = 0, s4 = 0;
+    for (const x of xs) {
+      const d = x - m;
+      s2 += d * d;
+      s3 += d * d * d;
+      s4 += d * d * d * d;
+    }
+    const skew = ((n * Math.sqrt(n - 1)) / (n - 2)) * (s3 / s2 ** 1.5);
+    const kurt = (n * (n + 1) * (n - 1) * s4) / ((n - 2) * (n - 3) * s2 * s2) - (3 * (n - 1) ** 2) / ((n - 2) * (n - 3));
+    return { skew, kurt };
+  }
+  // Abramowitz and Stegun 7.1.26, accurate to about 1e-7.
+  function erf(x) {
+    const t = 1 / (1 + 0.3275911 * Math.abs(x));
+    const y = 1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+    return x >= 0 ? y : -y;
+  }
+  // numpy's default percentile: linear between the two nearest ranks.
+  function percentile(xs, p) {
+    const sorted = [...xs].sort((a, b) => a - b);
+    const at = (p / 100) * (sorted.length - 1);
+    const lo = Math.floor(at);
+    return sorted[lo] + (sorted[Math.min(lo + 1, sorted.length - 1)] - sorted[lo]) * (at - lo);
+  }
+
+  function seriesMetrics(values, rfAnnual) {
+    const returns = values.slice(1).map((v, i) => v / values[i] - 1);
+    const n = returns.length;
+    if (n < 2) return {};
+    const rf = rfAnnual / BARS_PER_YEAR;
+    const avg = mean(returns);
+    const sd = sampleStd(returns);
+    const excess = returns.map((r) => r - rf);
+    const downside = Math.sqrt(mean(excess.map((e) => Math.min(e, 0) ** 2)));
+
+    let peak = -Infinity, maxDrawdown = 0, run = 0, longest = 0;
+    for (const v of values) {
+      peak = Math.max(peak, v);
+      const drawdown = (v - peak) / peak;
+      maxDrawdown = Math.min(maxDrawdown, drawdown);
+      run = drawdown < 0 ? run + 1 : 0;
+      longest = Math.max(longest, run);
+    }
+    maxDrawdown = Math.abs(maxDrawdown);
+
+    const cagr = n < 4 ? null : returns.reduce((g, r) => g * (1 + r), 1) ** (BARS_PER_YEAR / n) - 1;
+    const sharpe = sd > 0 ? (Math.sqrt(BARS_PER_YEAR) * (avg - rf)) / sd : 0;
+
+    let psr = 0;
+    if (sd > 0) {
+      const { skew, kurt } = skewKurt(returns);
+      const srHat = ((avg - rf) / sd) * Math.sqrt(BARS_PER_YEAR);
+      const srStd = Math.sqrt((1 - skew * srHat + ((kurt - 1) / 4) * srHat ** 2) / (n - 1));
+      if (srStd > 0) psr = 0.5 * (1 + erf((srHat - 1) / srStd / Math.SQRT2));
+    }
+    const var95 = percentile(returns, 5);
+    const tail = returns.filter((r) => r <= var95);
+
+    return {
+      sharpe,
+      sortino: downside > 0 ? (Math.sqrt(BARS_PER_YEAR) * mean(excess)) / downside : 0,
+      calmar: cagr !== null && maxDrawdown > 0 ? cagr / maxDrawdown : null,
+      // The index measured against itself.
+      alpha: 0,
+      beta: 1,
+      psr,
+      total_pct_return: values[values.length - 1] / values[0] - 1,
+      annualized_return: cagr,
+      ann_vol: sd * Math.sqrt(BARS_PER_YEAR),
+      max_drawdown: maxDrawdown,
+      max_drawdown_duration: longest,
+      var_95: var95,
+      cvar_95: tail.length ? mean(tail) : var95,
+    };
+  }
+
+  let sp500Metrics = null;
+
+  function showSp500(on) {
+    if (!on) {
+      if (sp500Series) chart.removeSeries(sp500Series);
+      sp500Series = null;
+      setPriceBounds();
+      renderMetrics(null);
+      return;
+    }
+    if (!sp500Data) {
+      if (loadingSp500) return;
+      loadingSp500 = true;
+      compareNote.textContent = "Loading the S&P 500…";
+      compareNote.hidden = false;
+      // A week early so the first day has a close to start from even after a long weekend.
+      vscode.postMessage({ type: "sp500", from: candles[0].time - 7 * 86400, to: candles[candles.length - 1].time + 86400 });
+      return;
+    }
+    if (sp500Series) return;
+    sp500Series = chart.addSeries(LC.LineSeries, sp500Options());
+    sp500Series.setData(sp500Data);
+    setPriceBounds();
+    renderMetrics(sp500Metrics);
+  }
+
+  window.addEventListener("message", (event) => {
+    const message = event.data;
+    if (message?.type !== "sp500") return;
+    loadingSp500 = false;
+    if (message.error) {
+      compareNote.textContent = `Couldn't load the S&P 500: ${message.error}`;
+      compareBox.checked = false;
+      return;
+    }
+    compareNote.hidden = true;
+    sp500Data = sp500Line(message.points);
+    // The engine's risk-free rate: the average T-bill yield over the run, else 3.5%.
+    const first = Math.floor(candles[0].time / 86400) * 86400;
+    const last = candles[candles.length - 1].time;
+    const yields = (message.irx || []).filter((p) => p.time >= first && p.time <= last).map((p) => p.close);
+    const rfAnnual = yields.length ? mean(yields) / 100 : 0.035;
+    sp500Metrics = seriesMetrics(sp500Data.filter((p) => p.value !== undefined).map((p) => p.value), rfAnnual);
+    showSp500(compareBox.checked);
+  });
+
+  compareBox.disabled = !candles.length || !(params.starting_equity > 0);
+  compareBox.checked = Boolean(compare) && !compareBox.disabled;
+  compareBox.addEventListener("change", () => {
+    vscode.postMessage({ type: "compare", on: compareBox.checked });
+    compareNote.hidden = true;
+    showSp500(compareBox.checked);
+  });
+
+  // ── expand ──────────────────────────────────────────────────
+  // Floats the equity card in the middle of the tab; the extension also maximizes the tab's
+  // editor group, so the charts get most of the window. The same button puts it back.
+  const equityCard = document.querySelector(".card.equity");
+  const expandButton = document.getElementById("expand");
+  const backdrop = document.getElementById("backdrop");
+  // Arrows on the top-right to bottom-left diagonal: pointing out to expand, in to collapse.
+  const icon = (d) =>
+    `<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+  const EXPAND_ICON = icon("M13.5 6.5v-4h-4M13.5 2.5L9 7M2.5 9.5v4h4M2.5 13.5L7 9");
+  const COLLAPSE_ICON = icon("M9 3v4h4M9 7l4.5-4.5M7 13V9H3M7 9l-4.5 4.5");
+  expandButton.innerHTML = EXPAND_ICON;
+  function setExpanded(on) {
+    if (on === equityCard.classList.contains("expanded")) return;
+    equityCard.classList.toggle("expanded", on);
+    document.body.classList.toggle("expanded", on);
+    backdrop.hidden = !on;
+    expandButton.innerHTML = on ? COLLAPSE_ICON : EXPAND_ICON;
+    expandButton.title = on ? "Collapse the charts (Esc)" : "Expand the charts";
+    expandButton.setAttribute("aria-label", expandButton.title);
+    vscode.postMessage({ type: "expand", on });
+  }
+  expandButton.addEventListener("click", () => setExpanded(!equityCard.classList.contains("expanded")));
+  backdrop.addEventListener("click", () => setExpanded(false));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") setExpanded(false);
+  });
+
   drawSeries();
   applyTheme();
+  if (compareBox.checked) showSp500(true);
   requestAnimationFrame(syncScrollbars);
   chart.timeScale().subscribeVisibleLogicalRangeChange(scheduleAllocation);
   // Resizing keeps the visible dates, which can leave the bars a hair short of the edges; if the
