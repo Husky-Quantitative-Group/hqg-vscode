@@ -1,0 +1,9 @@
+# What a strategy can use inside the local sandbox: hqg-backtester's requirements-sandbox.txt,
+# without hqg-algorithms (bundled in vendor/).
+pandas>=3.0
+numpy
+pydantic>=2.10,<3
+pydantic-settings>=2
+scikit-learn
+cvxpy
+cma

@@ -1,6 +1,6 @@
 // Renders a backtest result inside the webview, laid out like the dashboard's backtest page.
 (function () {
-  const { result, logs, fileName, elapsedSeconds, compare } = JSON.parse(document.getElementById("data").textContent);
+  const { result, logs, fileName, elapsedSeconds } = JSON.parse(document.getElementById("data").textContent);
   const vscode = acquireVsCodeApi();
   const metrics = result.metrics || {};
   const params = result.parameters || {};
@@ -816,10 +816,10 @@
     showSp500(compareBox.checked);
   });
 
+  // Off on every new results tab; ticking it loads the S&P 500 for this tab.
   compareBox.disabled = !candles.length || !(params.starting_equity > 0);
-  compareBox.checked = Boolean(compare) && !compareBox.disabled;
+  compareBox.checked = false;
   compareBox.addEventListener("change", () => {
-    vscode.postMessage({ type: "compare", on: compareBox.checked });
     compareNote.hidden = true;
     showSp500(compareBox.checked);
   });
@@ -854,7 +854,6 @@
 
   drawSeries();
   applyTheme();
-  if (compareBox.checked) showSp500(true);
   requestAnimationFrame(syncScrollbars);
   chart.timeScale().subscribeVisibleLogicalRangeChange(scheduleAllocation);
   // Resizing keeps the visible dates, which can leave the bars a hair short of the edges; if the

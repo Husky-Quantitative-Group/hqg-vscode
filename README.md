@@ -139,11 +139,12 @@ Python files.
    | Field | What it does |
    | --- | --- |
    | **Start date / End date** | The period to backtest. |
-   | **Local backtest** | Run on your own computer instead of the HQG server. Much faster; see [Local backtests](#local-backtests). |
    | **Starting equity ($)** | The cash the strategy starts with. |
    | **Run name** | Leave empty to use the name from `# hqg-backtest`. Anything you type here is used for every strategy until you clear it. |
    | **Timeout (seconds)** | How long to wait for the result before giving up. The run may still finish on the server. |
    | **Profile speed (slowest functions)** | Times every function while your strategy runs and lists the 40 slowest in the results' **Profile** tab. Use it to find out why a backtest is slow. The run takes a little longer, so leave it off normally. |
+   | **Local backtest** | Run on your own computer instead of the HQG server, in a Docker container like the server's. Faster; see [Local backtests](#local-backtests). |
+   | **No sandbox** | Shown when Local backtest is on. Runs the strategy without Docker. Only for code you trust. |
 
 4. Press **▶ Run Backtest**. While it runs, the panel shows the job's progress and a **Cancel**
    button, and VS Code shows a progress notification at the bottom-right:
@@ -167,27 +168,39 @@ Activity Bar into the Secondary Side Bar. VS Code remembers where you put it.
 
 ## Local backtests
 
-Turn on **Local backtest** under the dates to run backtests on your own computer instead of the
-HQG server. It uses the same backtest engine and gives the same results, much faster: about a
-second for 18 years of daily data, against 4 to 6 seconds on the server. You still need to be
-signed in.
+Turn on **Local backtest**, just above **Run Backtest**, to run backtests on your own computer
+instead of the HQG server. It uses the same backtest engine, the same code checks and the same
+sandbox as the server, and gives the same results, without the upload and the wait for the
+server. You still need to be signed in.
 
-- **The first time** you turn it on, the extension sets up a private Python environment and
-  installs pandas, yfinance and a few other libraries into it. That takes about a minute, and runs
-  in the background while you keep working. Your own Python and packages aren't touched.
+- **Your strategy runs in a sandbox**, a Docker container with the server's limits: no network, a
+  read-only disk, 512 MB of memory and 1 CPU. A strategy that goes over its memory is stopped
+  with a message saying so, as on the server. The next container starts while the current run
+  goes, so a run doesn't wait for one; the sandbox adds about 0.3 seconds.
+- **After an hour unused** (no runs, and no editing of a strategy), the local engine and its
+  waiting container stop to free memory. The next run starts them again, which takes a second or
+  two longer. Docker itself keeps running.
+- **You need Docker running**: [Docker Desktop](https://www.docker.com/products/docker-desktop/),
+  or on a Mac [Colima](https://github.com/abiosoft/colima) (`brew install colima docker`, then
+  `colima start`), OrbStack or Rancher Desktop.
+- **No sandbox** (under the Local backtest switch) runs the strategy as ordinary Python on your
+  computer instead, without Docker. Use it only for code you trust, such as your own.
+- **The first time** you turn local backtests on, the extension sets up a private Python
+  environment with pandas, yfinance and a few other libraries (about a minute), then builds the
+  sandbox image (about another minute, 835 MB). It runs in the background while you keep working.
+  Your own Python and packages aren't touched.
 - **You need Python 3.11 or newer** installed. The extension finds it by itself; to choose a
   specific one, set **hqg.localPython** in Settings to its command or path.
 - **Prices download once per ticker** from Yahoo Finance, the same source the server uses, and are
   kept on your computer. The first run with new tickers waits a second or two for that; after
   that, runs read them from disk. With local mode on, the extension also downloads them while you
   edit, as soon as you open a strategy or change its `universe`.
-- **Strategies run as ordinary Python on your computer.** The server runs each one in a locked-down
-  container; locally there's no such sandbox, so only run code you trust.
 - **Alt data from FRED** needs a free [FRED API key](https://fred.stlouisfed.org/docs/api/api_key.html)
   in a `FRED_API_KEY` environment variable when you start VS Code. Price data needs nothing.
 
-Everything is stored in VS Code's storage for the extension, so uninstalling the extension removes
-it.
+The Python environment and prices are stored in VS Code's storage for the extension, so
+uninstalling the extension removes them. The sandbox image stays in Docker as
+`hqg-local-sandbox`; remove it with `docker image rm` if you no longer need it.
 
 ## Read the results
 
@@ -201,10 +214,10 @@ Each run opens its own tab, so you can compare runs side by side.
 - **Strategy metrics**, on the left: Sharpe, Sortino, Calmar, alpha, beta, drawdown, VaR and more.
 - **Strategy equity:** your portfolio's value over time.
   - Switch between **Candles** and **Line**.
-  - Tick **Compare with S&P 500** to add a white line (black in light themes): what your starting equity would be worth
-    if you had put it all in the S&P 500 index on the first day. The metrics table then shows the
-    S&P 500's Sharpe, drawdown and other numbers beside your strategy's, worked out the same way
-    as the engine's. The box stays ticked for later runs until you untick it.
+  - Tick **Compare with S&P 500** to add a white line (black in light themes): what your starting
+    equity would be worth if you had put it all in the S&P 500 index on the first day. The metrics
+    table then shows the S&P 500's Sharpe, drawdown and other numbers beside your strategy's,
+    worked out the same way as the engine's. It's off on every new results tab.
   - Jump to the last **1M / 6M / 1Y / 5Y**, or show **All**.
   - The expand button (two outward arrows) in the card's top-right corner shows the equity and
     allocation charts large in the middle of the window (the strategy file hides for the moment).
@@ -251,6 +264,9 @@ backtest again.
 | The equity line is flat and grey at the start | That's warm-up: your strategy was all cash while it gathered price history. The backtester sends no data from before your start date, so start the backtest earlier if you need results from a specific date. |
 | Not sure the backtester is up | Press **Check Service** at the bottom of the panel. |
 | "Local backtests need Python 3.11 or newer" | Install Python from [python.org](https://www.python.org/downloads/), then turn **Local backtest** off and on again. Or set **hqg.localPython** to a Python you already have. |
+| "Docker isn't running" | Start Docker Desktop (or run `colima start`), then run again. Or turn on **No sandbox** for a strategy you trust. |
+| "Sandboxed local backtests need Docker" | Install Docker Desktop or Colima (see [Local backtests](#local-backtests)), or turn on **No sandbox**. |
+| "The sandbox stopped the strategy: it used more than its 512 MB of memory" | The same limit as the server. Use less data at once, for example shorter histories in `deque`s or arrays. |
 | The first local run is slow | It's downloading the strategy's prices once. Later runs with the same tickers read them from disk. |
 | A local run fails on FRED alt data | Set a `FRED_API_KEY` environment variable and restart VS Code. See [Local backtests](#local-backtests). |
 
@@ -367,6 +383,9 @@ It copies the current `main` branch of each repo from GitHub, without touching y
 and records the commits in `python/vendor/VERSIONS.txt`. It expects the three repos cloned next to
 `hqg-vscode`; set `HQG_REPOS` to their folder otherwise. Commit the result. If you change
 `python/requirements.txt`, members' private environments update themselves on their next local run.
+The sandbox image is named after a hash of everything copied into it (`python/sandbox/`,
+`python/vendor/` and the runner), so a release that changes any of them rebuilds it on members'
+next sandboxed run, and the old image is removed.
 
 ### Where things are
 
@@ -377,8 +396,9 @@ and records the commits in `python/vendor/VERSIONS.txt`. It expects the three re
 | `src/results.ts`, `media/results.*` | The results tab |
 | `src/api.ts` | The backtester API client, the same calls as [`cli/api.py`](https://github.com/Husky-Quantitative-Group/hqg-backtester/blob/main/cli/api.py) in hqg-backtester |
 | `src/auth.ts` | Token storage, and reading `~/.hqg/credentials` |
-| `src/local.ts` | Local backtests: the private Python environment and the background worker |
-| `python/hqg_local/worker.py` | The worker that runs local backtests with the bundled engine |
+| `src/local.ts` | Local backtests: the private Python environment, the sandbox image and the background worker |
+| `python/hqg_local/worker.py` | The worker that runs local backtests with the bundled engine, and starts the sandbox containers |
+| `python/hqg_local/sandbox_runner.py`, `python/sandbox/` | What runs inside a sandbox container, and its image |
 | `python/vendor/` | The bundled engine, from hqg-backtester, hqg-datafeed and hqg-algorithms |
 | `scripts/sync-engine.sh` | Refreshes `python/vendor/` from GitHub |
 | `media/icon.png` | The extension's icon on the Marketplace |

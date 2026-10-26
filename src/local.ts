@@ -1,9 +1,12 @@
 // Local backtests: runs the bundled engine (python/) in a private Python environment instead of
-// sending the strategy to the HQG server. Free of VS Code APIs so it can be tested on its own.
+// sending the strategy to the HQG server. By default the strategy itself runs in a Docker
+// container with the server's limits (the sandbox); "No sandbox" runs it in the engine's own
+// process. Free of VS Code APIs so it can be tested on its own.
 
 import { ChildProcess, execFile, spawn } from "child_process";
 import * as crypto from "crypto";
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 import * as readline from "readline";
 
@@ -20,12 +23,21 @@ export type LocalRunRequest = {
 
 export type LocalRunResult = { result: BacktestResult; logs: string[] };
 
+/** The docker command and the sandbox image a sandboxed run uses. */
+export type Sandbox = { docker: string; image: string };
+
 /** The run was cancelled; not an error to show. */
 export class LocalCancelled extends Error {}
 
 type Pending = { resolve: (reply: Record<string, unknown>) => void; reject: (error: Error) => void };
 
 const MIN_PYTHON: [number, number] = [3, 11]; // pandas 3 needs 3.11
+const SANDBOX_REPO = "hqg-local-sandbox";
+// The same wording as DOCKER_NOT_RUNNING in python/hqg_local/worker.py.
+const DOCKER_NOT_RUNNING =
+  "Docker isn't running. Start Docker Desktop (or run `colima start`), or turn on No sandbox.";
+const DOCKER_MISSING =
+  "Sandboxed local backtests need Docker. Install Docker Desktop or Colima, or turn on No sandbox.";
 
 export class LocalEngine {
   private readonly envDir: string;
@@ -33,10 +45,15 @@ export class LocalEngine {
   private readonly requirements: string;
   private readonly marker: string;
   private settingUp?: Promise<void>;
+  private sandbox?: Sandbox;
+  private preparingSandbox?: Promise<Sandbox>;
   private worker?: ChildProcess;
   private ready?: Promise<void>;
   private pending = new Map<number, Pending>();
   private nextId = 1;
+  /** After this long without a run or prefetch, the worker and its waiting container stop. */
+  private idleMs = 60 * 60 * 1000;
+  private idleTimer?: NodeJS.Timeout;
 
   constructor(
     private readonly extensionDir: string,
@@ -69,23 +86,46 @@ export class LocalEngine {
     return this.settingUp;
   }
 
-  async run(request: LocalRunRequest, timeoutMs: number): Promise<LocalRunResult> {
+  /**
+   * Check that Docker is running and the sandbox image exists, building it the first time (and
+   * after an update changes the engine). Checked once per session.
+   */
+  prepareSandbox(report: (message: string) => void): Promise<Sandbox> {
+    if (this.sandbox) return Promise.resolve(this.sandbox);
+    this.preparingSandbox ??= this.doPrepareSandbox(report).finally(() => (this.preparingSandbox = undefined));
+    return this.preparingSandbox;
+  }
+
+  /** The sandbox, if it has been checked this session. */
+  readySandbox(): Sandbox | undefined {
+    return this.sandbox;
+  }
+
+  /** Run a backtest; with `sandbox`, the strategy runs in a container, otherwise in the engine. */
+  async run(request: LocalRunRequest, timeoutMs: number, sandbox?: Sandbox): Promise<LocalRunResult> {
     const timer = setTimeout(() => {
       this.stop(new Error(`Gave up after ${Math.round(timeoutMs / 1000)}s; the local run was stopped.`));
     }, timeoutMs);
     try {
-      const reply = await this.send({ cmd: "run", ...request });
+      const reply = await this.send({ cmd: "run", ...request, sandbox });
       return { result: reply.result as BacktestResult, logs: (reply.logs as string[]) ?? [] };
+    } catch (error) {
+      // Docker stopped since it was checked: check (and report) again on the next run.
+      if ((error as Error).message.includes(DOCKER_NOT_RUNNING)) this.sandbox = undefined;
+      throw error;
     } finally {
       clearTimeout(timer);
     }
   }
 
-  /** Download the strategy's prices ahead of time. Only when already set up; failures are ignored. */
-  async prefetch(code: string): Promise<void> {
+  /**
+   * Download the strategy's prices ahead of time and, with `sandbox`, start the container the
+   * run will use. Only when already set up; failures are ignored.
+   */
+  async prefetch(code: string, sandbox?: Sandbox): Promise<void> {
     if (!this.isSetUp()) return;
     try {
-      const reply = await this.send({ cmd: "prefetch", code });
+      const reply = await this.send({ cmd: "prefetch", code, sandbox });
       const symbols = (reply.symbols as string[]) ?? [];
       if (symbols.length) this.log(`  local prices ready: ${symbols.join(", ")}`);
     } catch {
@@ -99,6 +139,7 @@ export class LocalEngine {
   }
 
   dispose(): void {
+    clearTimeout(this.idleTimer);
     this.stop(new LocalCancelled("Closed"));
   }
 
@@ -155,9 +196,101 @@ export class LocalEngine {
     );
   }
 
-  private exec(command: string, args: string[], quiet = false): Promise<string> {
+  // ── sandbox ──────────────────────────────────────────────────────────────
+
+  private async doPrepareSandbox(report: (message: string) => void): Promise<Sandbox> {
+    const docker = this.findDocker();
+    if (!docker) throw new Error(DOCKER_MISSING);
+    const env = this.dockerEnv(docker);
+    try {
+      await this.exec(docker, ["info", "--format", "{{.ServerVersion}}"], true, env);
+    } catch {
+      throw new Error(DOCKER_NOT_RUNNING);
+    }
+
+    // The image is named after what goes into it, so an update that changes the engine rebuilds it.
+    const image = `${SANDBOX_REPO}:${this.sandboxHash().slice(0, 12)}`;
+    const built = await this.exec(docker, ["image", "inspect", "--format", "{{.Id}}", image], true, env).then(
+      () => true,
+      () => false
+    );
+    if (!built) {
+      report("building the sandbox (one time, about a minute)");
+      this.log(`  local engine: building ${image} with ${docker}`);
+      const pythonDir = path.join(this.extensionDir, "python");
+      await this.exec(docker, ["build", "--quiet", "-t", image, "-f", path.join(pythonDir, "sandbox", "Dockerfile"), pythonDir], false, env);
+      // Remove the images older versions of the extension built.
+      const tags = await this.exec(docker, ["image", "ls", SANDBOX_REPO, "--format", "{{.Tag}}"], true, env).catch(() => "");
+      const old = tags.split("\n").map((tag) => tag.trim()).filter((tag) => tag && `${SANDBOX_REPO}:${tag}` !== image);
+      if (old.length) {
+        await this.exec(docker, ["image", "rm", ...old.map((tag) => `${SANDBOX_REPO}:${tag}`)], true, env).catch(() => "");
+      }
+    }
+    this.sandbox = { docker, image };
+    return this.sandbox;
+  }
+
+  /** The docker command: on the PATH, or where Docker Desktop, Colima, OrbStack or Rancher put it. */
+  private findDocker(): string | undefined {
+    const exe = process.platform === "win32" ? "docker.exe" : "docker";
+    const home = os.homedir();
+    const places = [
+      ...(process.env.PATH ?? "").split(path.delimiter).filter(Boolean),
+      "/usr/local/bin",
+      "/opt/homebrew/bin",
+      "/usr/bin",
+      path.join(home, ".docker", "bin"),
+      "/Applications/Docker.app/Contents/Resources/bin",
+      path.join(home, ".orbstack", "bin"),
+      path.join(home, ".rd", "bin"),
+      "C:\\Program Files\\Docker\\Docker\\resources\\bin",
+    ];
+    return places.map((dir) => path.join(dir, exe)).find((file) => fs.existsSync(file));
+  }
+
+  /** Docker Desktop's credential helpers sit next to the docker command, which may not be on the PATH. */
+  private dockerEnv(docker: string): NodeJS.ProcessEnv {
+    return { ...process.env, PATH: path.dirname(docker) + path.delimiter + (process.env.PATH ?? "") };
+  }
+
+  /** A hash of everything copied into the sandbox image. */
+  private sandboxHash(): string {
+    const pythonDir = path.join(this.extensionDir, "python");
+    const files = [
+      path.join(pythonDir, "sandbox", "Dockerfile"),
+      path.join(pythonDir, "sandbox", "requirements.txt"),
+      path.join(pythonDir, "hqg_local", "sandbox_runner.py"),
+    ];
+    const walk = (dir: string) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name === "__pycache__") continue;
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else files.push(full);
+      }
+    };
+    walk(path.join(pythonDir, "vendor"));
+    const hash = crypto.createHash("sha256");
+    for (const file of files.sort()) hash.update(path.relative(pythonDir, file)).update(fs.readFileSync(file));
+    return hash.digest("hex");
+  }
+
+  /** Remove the containers a stopped worker left running (the worker labels them with its pid). */
+  private removeContainers(pid: number): void {
+    const sandbox = this.sandbox;
+    if (!sandbox) return;
+    const env = this.dockerEnv(sandbox.docker);
+    this.exec(sandbox.docker, ["ps", "-q", "--filter", `label=hqg-sandbox-owner=${pid}`], true, env)
+      .then((out) => {
+        const ids = out.split("\n").map((id) => id.trim()).filter(Boolean);
+        if (ids.length) return this.exec(sandbox.docker, ["rm", "-f", ...ids], true, env);
+      })
+      .catch(() => {});
+  }
+
+  private exec(command: string, args: string[], quiet = false, env?: NodeJS.ProcessEnv): Promise<string> {
     return new Promise((resolve, reject) => {
-      execFile(command, args, { maxBuffer: 16 * 1024 * 1024 }, (error, stdout, stderr) => {
+      execFile(command, args, { maxBuffer: 16 * 1024 * 1024, env }, (error, stdout, stderr) => {
         if (!quiet && stderr.trim()) this.log(stderr.trim());
         if (error) reject(new Error(stderr.trim().split("\n").pop() || error.message));
         else resolve(stdout);
@@ -207,13 +340,31 @@ export class LocalEngine {
     return this.ready;
   }
 
+  /** Restart the idle countdown; called on every request. */
+  private touch(): void {
+    clearTimeout(this.idleTimer);
+    this.idleTimer = setTimeout(() => this.rest(), this.idleMs);
+  }
+
+  /** Idle long enough: stop the worker, which ends its waiting sandbox container. The next request starts it again. */
+  private rest(): void {
+    if (this.pending.size) return this.touch(); // a long run is still going
+    if (!this.worker) return;
+    this.log(`  local engine: unused for ${Math.round(this.idleMs / 60000)} min; stopped it and its sandbox container`);
+    this.stop(new LocalCancelled("Idle"));
+  }
+
   private async send(message: Record<string, unknown>): Promise<Record<string, unknown>> {
+    this.touch();
     await this.startWorker();
     const id = this.nextId++;
-    return new Promise((resolve, reject) => {
+    const reply = new Promise<Record<string, unknown>>((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
       this.worker!.stdin!.write(JSON.stringify({ id, ...message }) + "\n");
     });
+    // The countdown runs from when the last request finished.
+    reply.then(() => this.touch(), () => this.touch());
+    return reply;
   }
 
   /** Kill the worker and fail whatever was waiting on it with `reason`. */
@@ -221,6 +372,8 @@ export class LocalEngine {
     const worker = this.worker;
     this.reset(reason);
     worker?.kill();
+    // A running container doesn't stop with the worker; its waiting ones exit by themselves.
+    if (worker?.pid) this.removeContainers(worker.pid);
   }
 
   private reset(reason: Error): void {

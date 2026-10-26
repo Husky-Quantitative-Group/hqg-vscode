@@ -5,8 +5,6 @@ import * as vscode from "vscode";
 
 import { BacktestResult } from "./api";
 
-const COMPARE_KEY = "hqg.compareSp500";
-
 /**
  * Daily closes of a Yahoo symbol, keyed by UTC midnight. The engine measures against ^GSPC (the
  * S&P 500) and takes its risk-free rate from ^IRX (the 3-month T-bill yield, in percent).
@@ -52,8 +50,7 @@ export function showResults(
   const nonce = crypto.randomBytes(16).toString("base64");
   const asset = (base: vscode.Uri, file: string) => webview.asWebviewUri(vscode.Uri.joinPath(base, file));
   // Escape "<" so strategy-controlled strings can never close the script tag.
-  const compare = context.globalState.get<boolean>(COMPARE_KEY, false);
-  const data = JSON.stringify({ result, logs, fileName, elapsedSeconds, compare }).replace(/</g, "\\u003c");
+  const data = JSON.stringify({ result, logs, fileName, elapsedSeconds }).replace(/</g, "\\u003c");
 
   // Whether Expand maximized this tab's editor group, so Collapse only undoes what it did.
   let maximized = false;
@@ -67,8 +64,6 @@ export function showResults(
   webview.onDidReceiveMessage(async (message) => {
     if (message?.type === "expand") {
       await setMaximized(Boolean(message.on));
-    } else if (message?.type === "compare") {
-      await context.globalState.update(COMPARE_KEY, Boolean(message.on));
     } else if (message?.type === "sp500") {
       try {
         // Without the T-bill rate the S&P 500 metrics fall back to 3.5%, as the engine does.

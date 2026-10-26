@@ -22,6 +22,7 @@
     timeoutSeconds: Number(form.timeoutSeconds.value),
     profile: form.profile.checked,
     local: form.local.checked,
+    noSandbox: form.noSandbox.checked,
   });
 
   const problem = (o) => {
@@ -40,6 +41,8 @@
     runButton.title = !hasStrategy ? "Open a strategy file first" : message;
     runButton.hidden = running;
     cancelButton.hidden = !running;
+    // "No sandbox" only applies to local runs.
+    $("no-sandbox").hidden = !form.local.checked;
   };
 
   const timeLeft = (expiresAt) => {
@@ -90,6 +93,8 @@
       form.timeoutSeconds.value = o.timeoutSeconds;
       form.profile.checked = o.profile;
       form.local.checked = Boolean(o.local);
+      form.noSandbox.checked = Boolean(o.noSandbox);
+      refresh();
     } else if (data.type === "showSignIn") {
       tokenForm.token.focus();
     } else if (data.type === "signInResult") {

@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 
 import { AuthError, BacktestClient, NetworkError } from "./api";
 import { AuthState, authState, markRejected, saveToken, signOut, tokenProblem } from "./auth";
-import { LocalCancelled, LocalEngine } from "./local";
+import { LocalCancelled, LocalEngine, Sandbox } from "./local";
 import { PanelAuth, RunOptions, RunPanel, loadOptions } from "./panel";
 import { showResults } from "./results";
 
@@ -26,9 +26,10 @@ let panel: RunPanel;
 let strategyUri: vscode.Uri | undefined;
 // Set while a backtest is in flight; calling it stops the run.
 let cancelRun: (() => void) | undefined;
-// Local backtests: the engine bundled in python/, and whether the panel's switch is on.
+// Local backtests: the engine bundled in python/, and the panel's two switches.
 let engine: LocalEngine;
 let localMode = false;
+let noSandbox = false;
 let prefetchTimer: NodeJS.Timeout | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -40,7 +41,7 @@ export function activate(context: vscode.ExtensionContext): void {
     (line) => output.appendLine(line),
     () => vscode.workspace.getConfiguration("hqg").get<string>("localPython") || undefined
   );
-  localMode = loadOptions(context).local;
+  ({ local: localMode, noSandbox } = loadOptions(context));
   panel = new RunPanel(context, {
     run: () => runBacktest(context, strategyUri),
     cancel: () => cancelRun?.(),
@@ -146,23 +147,24 @@ function updateStrategyContext(): void {
   }
 }
 
-/** Turning on Local backtest starts the one-time setup right away, so it's ready for the first run. */
+/**
+ * Turning on Local backtest (or turning off No sandbox) starts the one-time setup right away,
+ * so it's ready for the first run.
+ */
 function optionsChanged(options: RunOptions): void {
-  const turnedOn = options.local && !localMode;
+  const needsSandbox = options.local && !options.noSandbox;
+  const changed = (options.local && !localMode) || (needsSandbox && noSandbox);
   localMode = options.local;
-  if (!turnedOn) return;
-  if (engine.isSetUp()) {
+  noSandbox = options.noSandbox;
+  if (!changed) return;
+  if (engine.isSetUp() && (!needsSandbox || engine.readySandbox())) {
     prefetchSoon(0);
     return;
   }
   vscode.window
     .withProgress(
       { location: vscode.ProgressLocation.Notification, title: "Setting up local backtests (one time)" },
-      (progress) =>
-        engine.setup((message) => {
-          output.appendLine(`  ${message}`);
-          progress.report({ message });
-        })
+      (progress) => setUpLocal(needsSandbox, (message) => progress.report({ message }))
     )
     .then(
       () => {
@@ -173,14 +175,27 @@ function optionsChanged(options: RunOptions): void {
     );
 }
 
-/** In local mode, download the current strategy's prices shortly after it's opened or edited. */
+/** The private Python environment and, unless No sandbox is on, Docker and the sandbox image. */
+async function setUpLocal(sandboxed: boolean, report: (message: string) => void): Promise<Sandbox | undefined> {
+  const say = (message: string) => {
+    output.appendLine(`  ${message}`);
+    report(message);
+  };
+  if (!engine.isSetUp()) await engine.setup(say);
+  return sandboxed ? engine.prepareSandbox(say) : undefined;
+}
+
+/**
+ * In local mode, download the current strategy's prices shortly after it's opened or edited,
+ * and start the sandbox container the run will use.
+ */
 function prefetchSoon(delayMs = 1500): void {
   clearTimeout(prefetchTimer);
   if (!localMode || !strategyUri || cancelRun || !engine.isSetUp()) return;
   const uri = strategyUri.toString();
   prefetchTimer = setTimeout(() => {
     const document = vscode.workspace.textDocuments.find((doc) => doc.uri.toString() === uri);
-    if (document && !cancelRun) engine.prefetch(document.getText());
+    if (document && !cancelRun) engine.prefetch(document.getText(), noSandbox ? undefined : engine.readySandbox());
   }, delayMs);
 }
 
@@ -305,9 +320,10 @@ async function runBacktest(context: vscode.ExtensionContext, uri: vscode.Uri | u
   };
 
   diagnostics.delete(document.uri);
+  const where = options.local ? (options.noSandbox ? "locally, no sandbox" : "locally in the sandbox") : "";
   output.appendLine(
     `\n── ${fileName} · ${options.start} → ${options.end} · $${options.capital.toLocaleString()}` +
-      (options.local ? " · local" : "")
+      (where ? ` · ${where}` : "")
   );
 
   let panelCancelled = false;
@@ -327,14 +343,12 @@ async function runBacktest(context: vscode.ExtensionContext, uri: vscode.Uri | u
       try {
         if (options.local) {
           cancellation.onCancellationRequested(() => engine.cancel());
-          if (!engine.isSetUp()) {
-            await engine.setup((message) => {
-              status(message);
-              progress.report({ message });
-            });
-          }
-          status("running locally");
-          progress.report({ message: "running locally" });
+          const sandbox = await setUpLocal(!options.noSandbox, (message) => {
+            panel.setStatus(message, true);
+            progress.report({ message });
+          });
+          status(`running ${where}`);
+          progress.report({ message: `running ${where}` });
           const started = Date.now();
           const { result, logs } = await engine.run(
             {
@@ -345,7 +359,8 @@ async function runBacktest(context: vscode.ExtensionContext, uri: vscode.Uri | u
               capital: options.capital,
               profile: options.profile,
             },
-            options.timeoutSeconds * 1000
+            options.timeoutSeconds * 1000,
+            sandbox
           );
           for (const line of logs) output.appendLine(`  ${line}`);
           const elapsed = (Date.now() - started) / 1000;

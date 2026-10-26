@@ -14,6 +14,8 @@ export type RunOptions = {
   profile: boolean;
   /** Run on this computer instead of the HQG server. */
   local: boolean;
+  /** With local: run the strategy in the engine's own process instead of the Docker sandbox. */
+  noSandbox: boolean;
 };
 
 /** What the panel shows about the sign-in; never the token itself. */
@@ -33,6 +35,7 @@ const DEFAULTS: RunOptions = {
   timeoutSeconds: 600,
   profile: false,
   local: false,
+  noSandbox: false,
 };
 const OPTIONS_KEY = "hqg.runOptions";
 
@@ -127,16 +130,21 @@ export class RunPanel implements vscode.WebviewViewProvider {
         <label>Start date<input type="date" name="start" required></label>
         <label>End date<input type="date" name="end" required></label>
       </div>
-      <label class="switch" title="Run the backtest on this computer instead of the HQG server. The first time, the extension sets up a private Python environment, which takes about a minute.">
-        <input type="checkbox" name="local" role="switch">
-        <span class="track" aria-hidden="true"></span>
-        Local backtest
-      </label>
       <label>Starting equity ($)<input type="number" name="capital" min="1" step="any" required></label>
       <label>Run name<input type="text" name="runName" placeholder="defaults to the strategy name"></label>
       <label>Timeout (seconds)<input type="number" name="timeoutSeconds" min="1" step="1" required></label>
       <label class="check" title="Times every function while the backtest runs; the slowest show in the results' Profile tab. The run takes a little longer.">
         <input type="checkbox" name="profile">Profile speed (slowest functions)
+      </label>
+      <label class="switch" title="Run the backtest on this computer instead of the HQG server. The strategy runs in a Docker container with the server's limits. The first time, setup takes a few minutes.">
+        <input type="checkbox" name="local" role="switch">
+        <span class="track" aria-hidden="true"></span>
+        Local backtest
+      </label>
+      <label class="switch" id="no-sandbox" title="Run the strategy directly on this computer, without Docker. Only for strategies you trust, such as your own." hidden>
+        <input type="checkbox" name="noSandbox" role="switch">
+        <span class="track" aria-hidden="true"></span>
+        No sandbox
       </label>
       <p id="error" class="error" hidden></p>
       <button id="run" type="submit" class="primary">▶ Run Backtest</button>

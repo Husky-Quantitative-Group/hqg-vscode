@@ -332,6 +332,10 @@ label.switch {
   width: fit-content;
 }
 
+label.switch[hidden] {
+  display: none;
+}
+
 label.switch input {
   position: absolute;
   opacity: 0;

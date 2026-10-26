@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.2
+
+- **Local backtests run in a sandbox.** The strategy runs in a Docker container with the
+  server's limits (no network, read-only disk, 512 MB, 1 CPU), so local runs have the server's
+  protection as well as its code checks. It adds about 0.3 seconds a run. Needs Docker Desktop,
+  Colima, OrbStack or Rancher Desktop running.
+- **No sandbox**, a second switch under Local backtest, runs the strategy without Docker, as
+  before. Only for code you trust.
+- After an hour without runs or strategy edits, the local engine and its waiting sandbox
+  container stop to free memory; the next run starts them again.
+- The local switches moved to just above **Run Backtest**.
+- **Compare with S&P 500** is off on every new results tab; tick it when you want it. It was
+  remembered from the last tab before.
+
 ## 0.2.1
 
 - **Compare with S&P 500.** A box above the equity chart adds a white (or, in light themes,
